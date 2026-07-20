@@ -43,6 +43,7 @@ module.exports = {
   // prebuilt SEA staged by before-pack.cjs.
   npmRebuild: false,
   asar: true,
+  publish: null,
 
   files: ['out/**', 'package.json'],
 
