@@ -39,6 +39,7 @@ const JSONValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
     z.record(z.string(), JSONValueSchema),
   ]),
 );
+
 function hasUnsafeCustomBodyKey(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasUnsafeCustomBodyKey);
   if (typeof value !== 'object' || value === null) return false;
@@ -60,17 +61,19 @@ const CustomBodySchema: z.ZodType<JSONObject> = z
   })
   .pipe(z.record(z.string(), JSONValueSchema));
 
-export const ProviderConfigSchema = z.object({
-  type: ProviderTypeSchema,
-  apiKey: z.string().optional(),
-  baseUrl: z.string().optional(),
-  defaultModel: z.string().optional(),
-  oauth: OAuthRefSchema.optional(),
-  env: StringRecordSchema.optional(),
-  customHeaders: StringRecordSchema.optional(),
-  customBody: CustomBodySchema.optional(),
-  source: z.record(z.string(), z.unknown()).optional(),
-});
+export const ProviderConfigSchema = z
+  .object({
+    type: ProviderTypeSchema,
+    apiKey: z.string().optional(),
+    baseUrl: z.string().optional(),
+    defaultModel: z.string().optional(),
+    oauth: OAuthRefSchema.optional(),
+    env: StringRecordSchema.optional(),
+    customHeaders: StringRecordSchema.optional(),
+    customBody: CustomBodySchema.optional(),
+    source: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown());
 
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 

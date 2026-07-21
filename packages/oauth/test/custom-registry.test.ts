@@ -112,6 +112,73 @@ describe('fetchCustomRegistry', () => {
     });
   });
 
+  it('parses provider extensions and protects locally managed fields', async () => {
+    const body = makeKokubResponseBody();
+    const provider = body['registry_chat-completions'] as unknown as Record<string, unknown>;
+    provider['custom_headers'] = {
+      'User-Agent': 'qagent/1.7.1',
+      'X-Codegen-Client-Name': 'qagent',
+    };
+    provider['provider_config'] = {
+      future_option: { nested_wire_key: true },
+      retry_count: 3,
+      api_key: 'registry-must-not-override-local-auth',
+      base_url: 'https://registry-must-not-override.example.test',
+      source: { kind: 'untrusted' },
+    };
+    const fetchMock = vi.fn(async () => makeJsonResponse(body));
+
+    const result = await fetchCustomRegistry(KOKUB_SOURCE, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result['registry_chat-completions']?.providerConfig).toEqual({
+      customHeaders: {
+        'User-Agent': 'qagent/1.7.1',
+        'X-Codegen-Client-Name': 'qagent',
+      },
+      futureOption: { nested_wire_key: true },
+      retryCount: 3,
+    });
+  });
+
+  it('lets provider_config override a same-named top-level extension', async () => {
+    const body = makeKokubResponseBody();
+    const provider = body['registry_chat-completions'] as unknown as Record<string, unknown>;
+    provider['custom_headers'] = { 'X-Origin': 'top-level' };
+    provider['provider_config'] = {
+      custom_headers: { 'X-Origin': 'provider-config' },
+    };
+    const fetchMock = vi.fn(async () => makeJsonResponse(body));
+
+    const result = await fetchCustomRegistry(KOKUB_SOURCE, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result['registry_chat-completions']?.providerConfig).toEqual({
+      customHeaders: { 'X-Origin': 'provider-config' },
+    });
+  });
+
+  it('ignores extension values that are unsafe or cannot be persisted to TOML', async () => {
+    const body = makeKokubResponseBody();
+    const provider = body['registry_chat-completions'] as unknown as Record<string, unknown>;
+    provider['provider_config'] = {
+      valid_option: ['one', 'two'],
+      null_option: null,
+      unsafe_option: JSON.parse('{"constructor":{"enabled":true}}'),
+    };
+    const fetchMock = vi.fn(async () => makeJsonResponse(body));
+
+    const result = await fetchCustomRegistry(KOKUB_SOURCE, {
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result['registry_chat-completions']?.providerConfig).toEqual({
+      validOption: ['one', 'two'],
+    });
+  });
+
   it('omits the Authorization header when the apiKey is empty', async () => {
     const fetchMock = vi.fn(async () => makeJsonResponse(makeKokubResponseBody()));
 
@@ -273,6 +340,37 @@ describe('applyCustomRegistryProvider', () => {
     const claude = config.models?.['registry_chat-completions/claude-opus-4-7'];
     expect(claude).toBeDefined();
     expect((claude as { displayName: string }).displayName).toBe('Claude Opus 4.7');
+  });
+
+  it('writes safe provider extensions without allowing local fields to be overridden', () => {
+    const config: ManagedKimiConfigShape = { providers: {} };
+    const entry: CustomRegistryProviderEntry = {
+      id: 'extended',
+      name: 'Extended Provider',
+      api: 'https://extended.example.test/v1',
+      type: 'openai',
+      providerConfig: {
+        customHeaders: { 'User-Agent': 'qagent/1.7.1', 'X-Client': 'qagent' },
+        futureOption: { nested_wire_key: true },
+        apiKey: 'registry-key',
+        baseUrl: 'https://untrusted.example.test',
+        type: 'anthropic',
+        oauth: { key: 'untrusted' },
+        source: { kind: 'untrusted' },
+      },
+      models: {},
+    };
+
+    applyCustomRegistryProvider(config, entry, KOKUB_SOURCE);
+
+    expect(config.providers['extended']).toEqual({
+      customHeaders: { 'User-Agent': 'qagent/1.7.1', 'X-Client': 'qagent' },
+      futureOption: { nested_wire_key: true },
+      type: 'openai',
+      baseUrl: 'https://extended.example.test/v1',
+      apiKey: 'sk-token',
+      source: KOKUB_SOURCE,
+    });
   });
 
   it('falls back to the model id for displayName when name is absent', () => {

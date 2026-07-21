@@ -62,6 +62,7 @@ const JSONValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
     z.record(z.string(), JSONValueSchema),
   ]),
 );
+
 function hasUnsafeCustomBodyKey(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasUnsafeCustomBodyKey);
   if (typeof value !== 'object' || value === null) return false;
@@ -86,21 +87,23 @@ const CustomBodySchema: z.ZodType<JSONObject> = z
 export const ModelSourceSchema = z.enum(['static', 'discover', 'oauth-catalog']);
 export type ModelSource = z.infer<typeof ModelSourceSchema>;
 
-export const ProviderConfigSchema = z.object({
-  platformId: z.string().optional(),
-  modelSource: ModelSourceSchema.optional(),
+export const ProviderConfigSchema = z
+  .object({
+    platformId: z.string().optional(),
+    modelSource: ModelSourceSchema.optional(),
 
-  baseUrl: z.string().optional(),
-  customHeaders: StringRecordSchema.optional(),
-  customBody: CustomBodySchema.optional(),
-  defaultModel: z.string().optional(),
+    baseUrl: z.string().optional(),
+    customHeaders: StringRecordSchema.optional(),
+    customBody: CustomBodySchema.optional(),
+    defaultModel: z.string().optional(),
 
-  type: ProviderTypeSchema.optional(),
-  apiKey: z.string().optional(),
-  oauth: OAuthRefSchema.optional(),
-  env: StringRecordSchema.optional(),
-  source: z.record(z.string(), z.unknown()).optional(),
-});
+    type: ProviderTypeSchema.optional(),
+    apiKey: z.string().optional(),
+    oauth: OAuthRefSchema.optional(),
+    env: StringRecordSchema.optional(),
+    source: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown());
 
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 

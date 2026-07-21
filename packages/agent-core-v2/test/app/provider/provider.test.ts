@@ -203,6 +203,20 @@ describe('provider config section helpers', () => {
     expect(ProviderConfigSchema.safeParse({ customBody }).success).toBe(false);
   });
 
+  it('preserves TOML-compatible provider extension fields', () => {
+    expect(
+      ProviderConfigSchema.parse({
+        type: 'openai',
+        futureOption: { nested_wire_key: true },
+        retryCount: 3,
+      }),
+    ).toEqual({
+      type: 'openai',
+      futureOption: { nested_wire_key: true },
+      retryCount: 3,
+    });
+  });
+
   it('maps provider entries from TOML snake_case to camelCase', () => {
     expect(
       providersFromToml({
@@ -212,6 +226,7 @@ describe('provider config section helpers', () => {
           base_url: 'https://api.example.com/v1',
           custom_headers: { 'X-Test': '1' },
           custom_body: { nested: { enabled: false }, values: [0, ''] },
+          future_option: { nested_wire_key: true },
           oauth: { storage: 'file', key: 'token', oauth_host: 'https://auth.example.com' },
         },
       }),
@@ -222,6 +237,7 @@ describe('provider config section helpers', () => {
         baseUrl: 'https://api.example.com/v1',
         customHeaders: { 'X-Test': '1' },
         customBody: { nested: { enabled: false }, values: [0, ''] },
+        futureOption: { nested_wire_key: true },
         oauth: { storage: 'file', key: 'token', oauthHost: 'https://auth.example.com' },
       },
     });
@@ -237,6 +253,7 @@ describe('provider config section helpers', () => {
             baseUrl: 'https://api.example.com/v1',
             customHeaders: { 'X-Test': '1' },
             customBody: { nested: { enabled: false }, values: [0, ''] },
+            futureOption: { nested_wire_key: true },
             oauth: { storage: 'file', key: 'token', oauthHost: 'https://auth.example.com' },
           },
         },
@@ -249,6 +266,7 @@ describe('provider config section helpers', () => {
         base_url: 'https://api.example.com/v1',
         custom_headers: { 'X-Test': '1' },
         custom_body: { nested: { enabled: false }, values: [0, ''] },
+        future_option: { nested_wire_key: true },
         oauth: { storage: 'file', key: 'token', oauth_host: 'https://auth.example.com' },
       },
     });
