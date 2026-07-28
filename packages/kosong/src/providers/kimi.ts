@@ -16,6 +16,7 @@ import type { Tool } from '#/tool';
 import type { TokenUsage } from '#/usage';
 import OpenAI from 'openai';
 
+import { classifyKimiQuotaError } from './kimi-errors';
 import { KimiFiles } from './kimi-files';
 import {
   convertChatCompletionStreamToolCall,
@@ -402,7 +403,7 @@ class KimiStreamedMessage implements StreamedMessage {
         }
       }
     } catch (error: unknown) {
-      throw convertOpenAIError(error);
+      throw convertOpenAIError(error, classifyKimiQuotaError);
     }
   }
 }
@@ -586,7 +587,7 @@ export class KimiChatProvider implements ChatProvider {
         this._reasoningKeyDialect,
       );
     } catch (error: unknown) {
-      throw convertOpenAIError(error);
+      throw convertOpenAIError(error, classifyKimiQuotaError);
     }
   }
 
