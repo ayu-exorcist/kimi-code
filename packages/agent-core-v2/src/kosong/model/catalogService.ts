@@ -629,6 +629,7 @@ function buildProtocolProviderOptions(
   baseUrl: string | undefined,
 ): ProtocolProviderOptions | undefined {
   const options: MutableProtocolProviderOptions = {};
+  if (provider?.customBody !== undefined) options.customBody = provider.customBody;
 
   switch (protocol) {
     case 'anthropic':

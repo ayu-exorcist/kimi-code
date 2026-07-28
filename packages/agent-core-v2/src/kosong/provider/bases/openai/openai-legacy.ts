@@ -79,6 +79,7 @@ import {
   resolveAuthBackedClient,
 } from '../request-auth';
 import { normalizeToolCallIdsForProvider, sanitizeToolCallId } from '../tool-call-id';
+import { applyCustomBody, resolveCustomBodyStream, type CustomBody } from '#/kosong/contract/customBody';
 
 // Inbound: scan the known reasoning field names in priority order; first
 // string value wins. Outbound: echo the dialect the endpoint actually spoke
@@ -136,6 +137,7 @@ export interface OpenAILegacyOptions {
   reasoningKey?: string | undefined;
   offEffort?: string | undefined;
   thinkingEffort?: ThinkingEffort | undefined;
+  customBody?: CustomBody;
   httpClient?: unknown;
   defaultHeaders?: Record<string, string>;
   toolMessageConversion?: ToolMessageConversion | undefined;
@@ -524,6 +526,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
   private readonly _apiKey: string | undefined;
   private readonly _baseUrl: string | undefined;
   private readonly _defaultHeaders: Record<string, string> | undefined;
+  private readonly _customBody: CustomBody | undefined;
   private readonly _reasoningKeyDialect: ReasoningKeyDialect;
   private readonly _offEffort: string | undefined;
   private readonly _thinkingEffort: ThinkingEffort | undefined;
@@ -549,6 +552,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     this._apiKey = apiKey === undefined || apiKey.length === 0 ? undefined : apiKey;
     this._baseUrl = options.baseUrl ?? 'https://api.openai.com/v1';
     this._defaultHeaders = options.defaultHeaders;
+    this._customBody = options.customBody;
     this._model = options.model;
     this._stream = options.stream ?? true;
     this._hooks = options.hooks;
@@ -639,10 +643,11 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     const merged = this._hooks?.mergeHistory?.(messages);
     const finalMessages = merged ?? messages;
 
+    const stream = resolveCustomBodyStream(this._customBody, this._stream);
     const createParams: Record<string, unknown> = {
       model: this._model,
       messages: finalMessages,
-      stream: this._stream,
+      stream,
       ...kwargs,
     };
 
@@ -654,7 +659,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       createParams['response_format'] = responseFormatToOpenAI(options.responseFormat);
     }
 
-    if (this._stream) {
+    if (stream) {
       createParams['stream_options'] = { include_usage: true };
     }
 
@@ -664,7 +669,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
 
     // buildParams is the last hook to run before the request is sent.
     const builtParams = this._hooks?.buildParams?.(createParams);
-    const finalParams = builtParams ?? createParams;
+    const finalParams = applyCustomBody(builtParams ?? createParams, this._customBody);
 
     try {
       const client = this._createClient(options?.auth);
@@ -681,7 +686,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
         data as unknown as
           | OpenAI.Chat.ChatCompletion
           | AsyncIterable<OpenAI.Chat.ChatCompletionChunk>,
-        this._stream,
+        stream,
         this._reasoningKeyDialect,
         parseTraceId(response.headers),
         this._hooks?.extractUsage,

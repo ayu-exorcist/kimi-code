@@ -55,6 +55,7 @@ import {
   resolveAuthBackedClient,
 } from '../request-auth';
 import { normalizeToolCallIdsForProvider, sanitizeOpenAIResponsesCallId } from '../tool-call-id';
+import { applyCustomBody, resolveCustomBodyStream, type CustomBody } from '#/kosong/contract/customBody';
 
 function normalizeResponsesFinishReason(
   status: string | null | undefined,
@@ -352,6 +353,7 @@ export interface OpenAIResponsesOptions {
   maxOutputTokens?: number | undefined;
   offEffort?: string | undefined;
   thinkingEffort?: ThinkingEffort | undefined;
+  customBody?: CustomBody;
   httpClient?: unknown;
   defaultHeaders?: Record<string, string>;
   toolMessageConversion?: ToolMessageConversion | undefined;
@@ -1000,6 +1002,7 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
   private readonly _apiKey: string | undefined;
   private readonly _baseUrl: string | undefined;
   private readonly _defaultHeaders: Record<string, string> | undefined;
+  private readonly _customBody: CustomBody | undefined;
   private readonly _thinkingEffort: ThinkingEffort | undefined;
   private readonly _offEffort: string | undefined;
   private readonly _generationKwargs: OpenAIResponsesGenerationKwargs;
@@ -1013,6 +1016,7 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
     this._apiKey = apiKey === undefined || apiKey.length === 0 ? undefined : apiKey;
     this._baseUrl = options.baseUrl ?? 'https://api.openai.com/v1';
     this._defaultHeaders = options.defaultHeaders;
+    this._customBody = options.customBody;
     this._model = options.model;
     this._stream = true;
     this._thinkingEffort = options.thinkingEffort;
@@ -1116,12 +1120,13 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
 
     try {
       const client = this._createClient(options?.auth);
+      const stream = resolveCustomBodyStream(this._customBody, this._stream);
       const createParams: Record<string, unknown> = {
         model: this._model,
         input,
         tools: tools.map((t) => convertTool(t)),
         store: false,
-        stream: this._stream,
+        stream,
         ...kwargs,
       };
       if (systemPrompt) {
@@ -1148,8 +1153,11 @@ export class OpenAIResponsesChatProvider implements ChatProvider {
         client.responses as {
           create(params: unknown, opts?: unknown): Promise<unknown>;
         }
-      ).create(createParams, options?.signal ? { signal: options.signal } : undefined);
-      return new OpenAIResponsesStreamedMessage(response, this._stream);
+      ).create(
+        applyCustomBody(createParams, this._customBody),
+        options?.signal ? { signal: options.signal } : undefined,
+      );
+      return new OpenAIResponsesStreamedMessage(response, stream);
     } catch (error: unknown) {
       throw convertOpenAIError(error);
     }

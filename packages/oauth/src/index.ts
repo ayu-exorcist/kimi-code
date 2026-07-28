@@ -145,6 +145,7 @@ export {
 } from './custom-registry';
 export type {
   CustomRegistryModelEntry,
+  CustomRegistryProviderConfigValue,
   CustomRegistryProviderEntry,
   CustomRegistryProviderType,
   CustomRegistrySource,

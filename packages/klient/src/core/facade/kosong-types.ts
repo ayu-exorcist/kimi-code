@@ -5,6 +5,7 @@
  * `providerService`/`modelService` wire formats.
  */
 
+import type { CustomBody } from '@moonshot-ai/agent-core-v2/kosong/contract/customBody';
 import type { Message, StreamedMessagePart } from '@moonshot-ai/agent-core-v2/kosong/contract/message';
 import type { Tool } from '@moonshot-ai/agent-core-v2/kosong/contract/tool';
 import type { TokenUsage } from '@moonshot-ai/agent-core-v2/kosong/contract/usage';
@@ -29,6 +30,7 @@ export interface ProviderInput {
   baseUrl?: string;
   auth: ProviderAuth;
   defaultModel?: string;
+  customBody?: CustomBody;
 }
 
 /**

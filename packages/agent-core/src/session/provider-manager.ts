@@ -281,6 +281,7 @@ function toKosongProviderConfig(
             ? baseUrl.replace(/\/v1\/?$/, '')
             : baseUrl,
         apiKey: providerApiKey(provider),
+        customBody: provider.customBody,
         ...(maxOutputSize !== undefined ? { defaultMaxTokens: maxOutputSize } : {}),
         supportEfforts,
         ...(adaptiveThinking !== undefined ? { adaptiveThinking } : {}),
@@ -312,6 +313,7 @@ function toKosongProviderConfig(
         baseUrl:
           modelBaseUrl ?? providerValue(provider.baseUrl, provider.env, 'OPENAI_BASE_URL'),
         apiKey: providerApiKey(provider),
+        customBody: provider.customBody,
         reasoningKey,
         offEffort,
         // Session affinity: route every request of this session through the
@@ -331,6 +333,7 @@ function toKosongProviderConfig(
         model,
         baseUrl: modelBaseUrl ?? providerValue(provider.baseUrl, provider.env, 'KIMI_BASE_URL'),
         apiKey: providerApiKey(provider),
+        customBody: provider.customBody,
         generationKwargs: { prompt_cache_key: promptCacheKey },
         ...defaultHeadersField({
           ...envCustomHeaders,
@@ -345,6 +348,7 @@ function toKosongProviderConfig(
         baseUrl:
           modelBaseUrl ?? providerValue(provider.baseUrl, provider.env, 'GOOGLE_GEMINI_BASE_URL'),
         apiKey: providerApiKey(provider),
+        customBody: provider.customBody,
         ...defaultHeadersField({
           ...envCustomHeaders,
           ...kimiUserAgentHeader(kimiRequestHeaders),
@@ -358,6 +362,7 @@ function toKosongProviderConfig(
         baseUrl:
           modelBaseUrl ?? providerValue(provider.baseUrl, provider.env, 'OPENAI_BASE_URL'),
         apiKey: providerApiKey(provider),
+        customBody: provider.customBody,
         offEffort,
         // Session affinity: same `prompt_cache_key` intent as the `openai`
         // branch; the Responses API accepts it as a top-level request field.
@@ -383,6 +388,7 @@ function toKosongProviderConfig(
         vertexai: useServiceAccount,
         baseUrl,
         apiKey: useServiceAccount ? undefined : providerApiKey(provider),
+        customBody: provider.customBody,
         project: vertexAIProject(provider),
         location: vertexAILocation(provider, baseUrl),
         ...defaultHeadersField({

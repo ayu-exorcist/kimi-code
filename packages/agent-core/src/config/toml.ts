@@ -358,7 +358,7 @@ function transformProviderData(data: Record<string, unknown>): Record<string, un
     const targetKey = snakeToCamel(key);
     if (targetKey === 'oauth') {
       out[targetKey] = isPlainObject(value) ? transformPlainObject(value) : value;
-    } else if (targetKey === 'env' || targetKey === 'customHeaders') {
+    } else if (targetKey === 'env' || targetKey === 'customHeaders' || targetKey === 'customBody') {
       out[targetKey] = cloneObjectValue(value);
     } else {
       out[targetKey] = value;
@@ -556,7 +556,10 @@ function providerToToml(provider: ProviderConfig, rawProvider: unknown): Record<
   for (const [key, value] of Object.entries(provider)) {
     if (key === 'oauth' && value !== undefined) {
       out[camelToSnake(key)] = oauthToToml(value as OAuthRef);
-    } else if ((key === 'env' || key === 'customHeaders') && value !== undefined) {
+    } else if (
+      (key === 'env' || key === 'customHeaders' || key === 'customBody') &&
+      value !== undefined
+    ) {
       out[camelToSnake(key)] = cloneUnknown(value);
     } else {
       setDefined(out, camelToSnake(key), value);

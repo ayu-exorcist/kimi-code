@@ -322,6 +322,7 @@ export function createGlobalFacade(scoped: ScopedCaller, scopedStream: ScopedStr
             type: config.type,
             baseUrl: config.baseUrl,
             defaultModel: config.defaultModel,
+            customBody: config.customBody,
             apiKey: config.auth.method === 'api-key' ? config.auth.apiKey : '',
           };
           return call('providerService', 'set', [idOrConfig, wire]) as Promise<void>;

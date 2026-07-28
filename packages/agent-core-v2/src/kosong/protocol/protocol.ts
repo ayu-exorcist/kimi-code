@@ -27,6 +27,7 @@ import { createDecorator, type ServiceIdentifier } from '#/_base/di/instantiatio
 import type { ModelCapability } from '#/kosong/contract/capability';
 import type { InspectionSource } from '#/kosong/contract/inspection';
 import type { ChatProvider } from '#/kosong/contract/provider';
+import type { CustomBody } from '#/kosong/contract/customBody';
 
 import type { ProtocolBaseId, ResolvedAdapterIdentity } from './protocolBase';
 
@@ -61,6 +62,7 @@ export interface ProtocolProviderOptions {
   readonly adaptiveThinking?: boolean;
   readonly betaApi?: boolean;
   readonly metadata?: Readonly<Record<string, string>>;
+  readonly customBody?: CustomBody;
   readonly vertexai?: boolean;
   readonly project?: string;
   readonly location?: string;

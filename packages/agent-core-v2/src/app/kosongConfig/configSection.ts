@@ -41,6 +41,7 @@ import {
 import { type AssertExact, type Equal } from '#/_base/utils/typeEquality';
 import type { ModelOverride, ModelRecord, ModelsSection } from '#/kosong/model/model';
 import type { ThinkingConfig } from '#/kosong/model/thinking';
+import type { CustomBody, JSONValue } from '#/kosong/contract/customBody';
 import type { OAuthRef, ProviderConfig, ProvidersSection } from '#/kosong/provider/provider';
 import { ProtocolSchema } from '#/kosong/protocol/protocol';
 
@@ -66,19 +67,54 @@ export const ModelSourceSchema = z.enum(['static', 'discover', 'oauth-catalog'])
 
 const StringRecordSchema = z.record(z.string(), z.string());
 
-export const ProviderConfigSchema = z.object({
-  modelSource: ModelSourceSchema.optional(),
+const JSONValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(JSONValueSchema),
+    z.record(z.string(), JSONValueSchema),
+  ]),
+);
 
-  baseUrl: z.string().optional(),
-  customHeaders: StringRecordSchema.optional(),
-  defaultModel: z.string().optional(),
+function hasUnsafeCustomBodyKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasUnsafeCustomBodyKey);
+  if (typeof value !== 'object' || value === null) return false;
+  return Object.entries(value).some(
+    ([key, entryValue]) =>
+      key === '__proto__' ||
+      key === 'prototype' ||
+      key === 'constructor' ||
+      hasUnsafeCustomBodyKey(entryValue),
+  );
+}
 
-  type: ProviderTypeSchema.optional(),
-  apiKey: z.string().optional(),
-  oauth: OAuthRefSchema.optional(),
-  env: StringRecordSchema.optional(),
-  source: z.record(z.string(), z.unknown()).optional(),
-});
+const CustomBodySchema: z.ZodType<CustomBody> = z
+  .unknown()
+  .superRefine((value, ctx) => {
+    if (hasUnsafeCustomBodyKey(value)) {
+      ctx.addIssue({ code: 'custom', message: 'customBody cannot contain unsafe object keys' });
+    }
+  })
+  .pipe(z.record(z.string(), JSONValueSchema));
+
+export const ProviderConfigSchema = z
+  .object({
+    modelSource: ModelSourceSchema.optional(),
+
+    baseUrl: z.string().optional(),
+    customHeaders: StringRecordSchema.optional(),
+    customBody: CustomBodySchema.optional(),
+    defaultModel: z.string().optional(),
+
+    type: ProviderTypeSchema.optional(),
+    apiKey: z.string().optional(),
+    oauth: OAuthRefSchema.optional(),
+    env: StringRecordSchema.optional(),
+    source: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown());
 
 export const ProvidersSectionSchema = z.record(z.string(), ProviderConfigSchema);
 
@@ -125,7 +161,11 @@ function providerEntryFromToml(data: Record<string, unknown>): Record<string, un
     const targetKey = snakeToCamel(key);
     if (targetKey === 'oauth') {
       out[targetKey] = isPlainObject(value) ? transformPlainObject(value) : value;
-    } else if (targetKey === 'env' || targetKey === 'customHeaders') {
+    } else if (
+      targetKey === 'env' ||
+      targetKey === 'customHeaders' ||
+      targetKey === 'customBody'
+    ) {
       out[targetKey] = isPlainObject(value) ? cloneRecord(value) : value;
     } else {
       out[targetKey] = value;
@@ -152,7 +192,10 @@ function providerEntryToToml(
   for (const [key, value] of Object.entries(provider)) {
     if (key === 'oauth' && isPlainObject(value)) {
       out[camelToSnake(key)] = plainObjectToToml(value, undefined);
-    } else if ((key === 'env' || key === 'customHeaders') && value !== undefined) {
+    } else if (
+      (key === 'env' || key === 'customHeaders' || key === 'customBody') &&
+      value !== undefined
+    ) {
       out[camelToSnake(key)] = cloneRecord(value);
     } else {
       setDefined(out, camelToSnake(key), value);

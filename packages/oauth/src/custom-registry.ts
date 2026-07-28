@@ -49,12 +49,25 @@ export interface CustomRegistryModelEntry {
   readonly default_effort?: string;
 }
 
+export type CustomRegistryProviderConfigValue =
+  | string
+  | number
+  | boolean
+  | CustomRegistryProviderConfigValue[]
+  | { [key: string]: CustomRegistryProviderConfigValue };
+
 export interface CustomRegistryProviderEntry {
   readonly id: string;
   readonly name: string;
   readonly api: string;
   readonly type: CustomRegistryProviderType;
   readonly env?: readonly string[];
+  /**
+   * Provider-level registry extensions, normalized to Kimi's internal camelCase
+   * config shape. Nested keys are intentionally preserved verbatim because
+   * header names and protocol request-body fields are wire-format data.
+   */
+  readonly providerConfig?: Readonly<Record<string, CustomRegistryProviderConfigValue>>;
   readonly models: Record<string, CustomRegistryModelEntry>;
 }
 
@@ -72,6 +85,31 @@ const ALLOWED_PROVIDER_TYPES: ReadonlySet<CustomRegistryProviderType> = new Set(
   'openai_responses',
   'kimi',
 ]);
+
+const REGISTRY_PROVIDER_FIELDS = new Set([
+  'id',
+  'name',
+  'api',
+  'type',
+  'env',
+  'npm',
+  'models',
+  'provider_config',
+]);
+
+// Credentials, endpoint identity, and refresh ownership always come from the
+// local import flow, never from arbitrary fields in a remote registry payload.
+const PROTECTED_PROVIDER_CONFIG_FIELDS = new Set([
+  'type',
+  'baseUrl',
+  'apiKey',
+  'oauth',
+  'source',
+  'platformId',
+  'modelSource',
+  'env',
+]);
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 
 export class CustomRegistryApiError extends Error {
   readonly status: number;
@@ -96,6 +134,81 @@ function toStringArrayOrUndefined(value: unknown): readonly string[] | undefined
     out.push(item);
   }
   return out;
+}
+
+function providerConfigKeyFromRegistry(key: string): string {
+  return key.replaceAll(/_([a-z])/g, (_match, ch: string) => ch.toUpperCase());
+}
+
+function hasUnsafeObjectKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasUnsafeObjectKey);
+  if (!isRecord(value)) return false;
+  return Object.entries(value).some(
+    ([key, nested]) => UNSAFE_OBJECT_KEYS.has(key) || hasUnsafeObjectKey(nested),
+  );
+}
+
+function isProviderConfigValue(value: unknown): value is CustomRegistryProviderConfigValue {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+  ) {
+    return true;
+  }
+  if (Array.isArray(value)) return value.every(isProviderConfigValue);
+  if (!isRecord(value) || hasUnsafeObjectKey(value)) return false;
+  return Object.values(value).every(isProviderConfigValue);
+}
+
+function sanitizeProviderConfig(
+  value: Readonly<Record<string, unknown>>,
+): Record<string, CustomRegistryProviderConfigValue> {
+  const out: Record<string, CustomRegistryProviderConfigValue> = Object.create(null) as Record<
+    string,
+    CustomRegistryProviderConfigValue
+  >;
+  for (const [key, item] of Object.entries(value)) {
+    if (
+      UNSAFE_OBJECT_KEYS.has(key) ||
+      PROTECTED_PROVIDER_CONFIG_FIELDS.has(key) ||
+      !isProviderConfigValue(item)
+    ) {
+      continue;
+    }
+    if (
+      key === 'customHeaders' &&
+      (!isRecord(item) || Object.values(item).some((header) => typeof header !== 'string'))
+    ) {
+      continue;
+    }
+    out[key] = structuredClone(item);
+  }
+  return out;
+}
+
+function parseProviderConfigExtensions(
+  provider: Record<string, unknown>,
+): Record<string, CustomRegistryProviderConfigValue> {
+  const raw: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+
+  // Preserve unknown provider-level fields for compatibility with existing
+  // api.json extensions such as `custom_headers`.
+  for (const [key, value] of Object.entries(provider)) {
+    if (!REGISTRY_PROVIDER_FIELDS.has(key)) raw[key] = value;
+  }
+
+  // A namespaced extension bag is preferred for future fields and wins over a
+  // same-named compatibility field at provider level.
+  if (isRecord(provider['provider_config'])) {
+    Object.assign(raw, provider['provider_config']);
+  }
+
+  return sanitizeProviderConfig(
+    Object.fromEntries(
+      Object.entries(raw).map(([key, value]) => [providerConfigKeyFromRegistry(key), value]),
+    ),
+  );
 }
 
 function toModelEntry(value: unknown): CustomRegistryModelEntry | undefined {
@@ -180,6 +293,7 @@ function toProviderEntry(value: unknown): CustomRegistryProviderEntry | undefine
   }
 
   const env = toStringArrayOrUndefined(value['env']);
+  const providerConfig = parseProviderConfigExtensions(value);
 
   return {
     id,
@@ -187,6 +301,7 @@ function toProviderEntry(value: unknown): CustomRegistryProviderEntry | undefine
     api,
     type,
     ...(env !== undefined ? { env } : {}),
+    ...(Object.keys(providerConfig).length > 0 ? { providerConfig } : {}),
     models: parsedModels,
   };
 }
@@ -316,7 +431,10 @@ export function applyCustomRegistryProvider(
 ): void {
   const providerKey = entry.id;
 
+  const providerConfig = sanitizeProviderConfig(entry.providerConfig ?? {});
   config.providers[providerKey] = {
+    ...providerConfig,
+    // These locally managed fields deliberately win over registry extensions.
     type: entry.type,
     baseUrl: entry.api,
     apiKey: source.apiKey,

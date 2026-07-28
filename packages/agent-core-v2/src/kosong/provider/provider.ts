@@ -25,6 +25,7 @@
 
 import { createDecorator, type ServiceIdentifier } from '#/_base/di/instantiation';
 import type { Event, IWaitUntil } from '#/_base/event';
+import type { CustomBody } from '#/kosong/contract/customBody';
 
 /**
  * Free-form vendor identity (e.g. `'kimi'`). Not an enum, by design — see the
@@ -45,6 +46,7 @@ export interface ProviderConfig {
 
   baseUrl?: string;
   customHeaders?: Record<string, string>;
+  customBody?: CustomBody;
   defaultModel?: string;
 
   type?: ProviderType;
@@ -52,6 +54,9 @@ export interface ProviderConfig {
   oauth?: OAuthRef;
   env?: Record<string, string>;
   source?: Record<string, unknown>;
+
+  /** Preserve provider-specific options owned by external registries. */
+  [key: string]: unknown;
 }
 
 export type ProvidersSection = Record<string, ProviderConfig>;

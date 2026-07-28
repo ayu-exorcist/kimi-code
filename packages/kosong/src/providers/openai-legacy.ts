@@ -42,6 +42,7 @@ import {
   sanitizeToolCallId,
   type ToolCallIdPolicy,
 } from './tool-call-id';
+import { applyCustomBody, resolveCustomBodyStream, type CustomBody } from './custom-body';
 
 // Inbound: scan the known reasoning field names in priority order; first
 // string value wins. Outbound: echo the dialect the endpoint actually spoke
@@ -90,6 +91,7 @@ export interface OpenAILegacyOptions {
   offEffort?: string | undefined;
   httpClient?: unknown;
   defaultHeaders?: Record<string, string>;
+  customBody?: CustomBody;
   toolMessageConversion?: ToolMessageConversion | undefined;
   clientFactory?: (auth: ProviderRequestAuth) => OpenAI;
   /**
@@ -482,6 +484,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
   private _apiKey: string | undefined;
   private _baseUrl: string | undefined;
   private _defaultHeaders: Record<string, string> | undefined;
+  private _customBody: CustomBody | undefined;
   private _reasoningKeyDialect: ReasoningKeyDialect;
   private _thinkingEffort: ThinkingEffort | undefined;
   private _offEffort: string | undefined;
@@ -496,6 +499,7 @@ export class OpenAILegacyChatProvider implements ChatProvider {
     this._apiKey = apiKey === undefined || apiKey.length === 0 ? undefined : apiKey;
     this._baseUrl = options.baseUrl ?? 'https://api.openai.com/v1';
     this._defaultHeaders = options.defaultHeaders;
+    this._customBody = options.customBody;
     this._model = options.model;
     this._stream = options.stream ?? true;
     // Normalize blank/whitespace reasoningKey to unset. ModelAliasSchema
@@ -625,22 +629,25 @@ export class OpenAILegacyChatProvider implements ChatProvider {
       createParams['tools'] = tools.map((t) => toolToOpenAI(t));
     }
 
-    if (this._stream) {
+    const stream = resolveCustomBodyStream(this._customBody, createParams['stream'] === true);
+    createParams['stream'] = stream;
+    if (stream) {
       createParams['stream_options'] = { include_usage: true };
     }
 
     if (reasoningEffort !== undefined) {
       createParams['reasoning_effort'] = reasoningEffort;
     }
+    const finalCreateParams = applyCustomBody(createParams, this._customBody);
 
     try {
       const client = this._createClient(options?.auth);
       options?.onRequestSent?.();
       const response = (await client.chat.completions.create(
-        createParams as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+        finalCreateParams as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
         options?.signal ? { signal: options.signal } : undefined,
       )) as unknown as OpenAI.Chat.ChatCompletion | AsyncIterable<OpenAI.Chat.ChatCompletionChunk>;
-      return new OpenAILegacyStreamedMessage(response, this._stream, this._reasoningKeyDialect);
+      return new OpenAILegacyStreamedMessage(response, stream, this._reasoningKeyDialect);
     } catch (error: unknown) {
       throw convertOpenAIError(error);
     }

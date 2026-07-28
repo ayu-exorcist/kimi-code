@@ -14,6 +14,7 @@ import { ConfigRegistry } from '#/app/config/configService';
 import {
   ENV_MODEL_PROVIDER_KEY,
   PROVIDERS_SECTION,
+  ProviderConfigSchema,
   providersEnvBindings,
   providersFromToml,
   providersToToml,
@@ -53,6 +54,26 @@ describe('provider config section helpers', () => {
     });
   });
 
+  it('rejects unsafe keys in provider customBody', () => {
+    const customBody = JSON.parse('{"__proto__":{"enabled":true}}');
+
+    expect(ProviderConfigSchema.safeParse({ customBody }).success).toBe(false);
+  });
+
+  it('preserves TOML-compatible provider extension fields', () => {
+    expect(
+      ProviderConfigSchema.parse({
+        type: 'openai',
+        futureOption: { nested_wire_key: true },
+        retryCount: 3,
+      }),
+    ).toEqual({
+      type: 'openai',
+      futureOption: { nested_wire_key: true },
+      retryCount: 3,
+    });
+  });
+
   it('maps provider entries from TOML snake_case to camelCase', () => {
     expect(
       providersFromToml({
@@ -61,6 +82,8 @@ describe('provider config section helpers', () => {
           api_key: 'sk',
           base_url: 'https://api.example.com/v1',
           custom_headers: { 'X-Test': '1' },
+          custom_body: { nested: { enabled: false }, values: [0, ''] },
+          future_option: { nested_wire_key: true },
           oauth: { storage: 'file', key: 'token', oauth_host: 'https://auth.example.com' },
         },
       }),
@@ -70,6 +93,8 @@ describe('provider config section helpers', () => {
         apiKey: 'sk',
         baseUrl: 'https://api.example.com/v1',
         customHeaders: { 'X-Test': '1' },
+        customBody: { nested: { enabled: false }, values: [0, ''] },
+        futureOption: { nested_wire_key: true },
         oauth: { storage: 'file', key: 'token', oauthHost: 'https://auth.example.com' },
       },
     });
@@ -84,6 +109,8 @@ describe('provider config section helpers', () => {
             apiKey: 'sk',
             baseUrl: 'https://api.example.com/v1',
             customHeaders: { 'X-Test': '1' },
+            customBody: { nested: { enabled: false }, values: [0, ''] },
+            futureOption: { nested_wire_key: true },
             oauth: { storage: 'file', key: 'token', oauthHost: 'https://auth.example.com' },
           },
         },
@@ -95,6 +122,8 @@ describe('provider config section helpers', () => {
         api_key: 'sk',
         base_url: 'https://api.example.com/v1',
         custom_headers: { 'X-Test': '1' },
+        custom_body: { nested: { enabled: false }, values: [0, ''] },
+        future_option: { nested_wire_key: true },
         oauth: { storage: 'file', key: 'token', oauth_host: 'https://auth.example.com' },
       },
     });
