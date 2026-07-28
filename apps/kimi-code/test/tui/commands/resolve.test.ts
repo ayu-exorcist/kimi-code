@@ -319,6 +319,24 @@ describe('slash command busy helpers', () => {
     });
   });
 
+  it('requires the skill prefix when a qualified skill conflicts with a plugin command', () => {
+    const skillCommandMap = new Map([['skill:my-plugin:review', 'my-plugin:review']]);
+    const pluginCommandMap = new Map([['my-plugin:review', 'Plugin command body']]);
+
+    expect(resolve('/my-plugin:review command args', { skillCommandMap, pluginCommandMap })).toEqual({
+      kind: 'plugin-command',
+      commandName: 'review',
+      pluginId: 'my-plugin',
+      args: 'command args',
+    });
+    expect(resolve('/skill:my-plugin:review skill args', { skillCommandMap, pluginCommandMap })).toEqual({
+      kind: 'skill',
+      commandName: 'skill:my-plugin:review',
+      skillName: 'my-plugin:review',
+      args: 'skill args',
+    });
+  });
+
   it('resolves a nested plugin command whose name contains a slash', () => {
     const pluginCommandMap = new Map([['my-plugin:frontend/component', 'body']]);
     expect(resolve('/my-plugin:frontend/component spin', { pluginCommandMap })).toEqual({

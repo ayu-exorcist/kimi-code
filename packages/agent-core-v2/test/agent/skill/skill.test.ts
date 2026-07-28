@@ -33,6 +33,19 @@ const COMMIT_SKILL = stubSkill('commit', {
   source: 'user',
 });
 
+const PLUGIN_REVIEW_SKILL = stubSkill('review', {
+  description: 'review changes',
+  path: '/plugins/superpowers/skills/review/SKILL.md',
+  dir: '/plugins/superpowers/skills/review',
+  content: '# Review',
+  metadata: {},
+  source: 'extra',
+  plugin: {
+    id: 'superpowers',
+    instructions: 'Use the plugin review workflow.',
+  },
+});
+
 function stubSessionContext(sessionId = 'test-session'): ISessionContext {
   return {
     _serviceBrand: undefined,
@@ -111,6 +124,25 @@ describe('AgentSkillService', () => {
   it('activate throws for an unknown skill', async () => {
     const svc = ix.get(IAgentSkillService);
     await expect(svc.activate({ name: 'missing' })).rejects.toThrow(/not found/i);
+  });
+
+  it('activates a plugin skill by its qualified name', async () => {
+    skills.register(PLUGIN_REVIEW_SKILL);
+    const svc = ix.get(IAgentSkillService);
+
+    await svc.activate({ name: 'superpowers:review' });
+
+    expect(prompted[0]?.origin).toMatchObject({
+      kind: 'skill_activation',
+      skillName: 'superpowers:review',
+      trigger: 'user-slash',
+    });
+    expect(prompted[0]?.content[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining(
+        '<kimi-skill-loaded name="superpowers:review" trigger="user-slash"',
+      ),
+    });
   });
 
   it('activate waits for the catalog to be ready before resolving', async () => {
@@ -305,6 +337,29 @@ describe('SkillTool', () => {
     expect(result.delivery?.message.content[0]).toMatchObject({
       type: 'text',
       text: expect.stringContaining('ARGUMENTS: src/app.ts'),
+    });
+  });
+
+  it('loads a plugin skill by its qualified name', async () => {
+    skills.register(PLUGIN_REVIEW_SKILL);
+
+    const result = await executeTool(
+      makeTool(ix),
+      toolContext({ skill: 'superpowers:review' }),
+    );
+
+    expect(result).toMatchObject({
+      output: 'Skill "superpowers:review" loaded inline. Follow its instructions.',
+    });
+    expect(result.delivery?.message.origin).toMatchObject({
+      skillName: 'superpowers:review',
+      trigger: 'model-tool',
+    });
+    expect(result.delivery?.message.content[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining(
+        '<kimi-skill-loaded name="superpowers:review" trigger="model-tool"',
+      ),
     });
   });
 

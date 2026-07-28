@@ -102,4 +102,25 @@ describe('skill slash commands', () => {
     expect(built.commands.map((command) => command.name)).toEqual(['outer.inner']);
     expect(built.commandMap.get('outer.inner')).toBe('outer.inner');
   });
+
+  it('preserves plugin-qualified names in slash commands', () => {
+    const built = buildSkillSlashCommands([
+      skill('superpowers:systematic-debugging', 'prompt', { source: 'extra' }),
+      skill('superpowers:outer.inner', 'prompt', {
+        isSubSkill: true,
+        source: 'extra',
+      }),
+    ]);
+
+    expect(built.commands.map((command) => command.name)).toEqual([
+      'skill:superpowers:outer.inner',
+      'skill:superpowers:systematic-debugging',
+    ]);
+    expect(built.commandMap.get('skill:superpowers:systematic-debugging')).toBe(
+      'superpowers:systematic-debugging',
+    );
+    expect(built.commandMap.get('skill:superpowers:outer.inner')).toBe(
+      'superpowers:outer.inner',
+    );
+  });
 });

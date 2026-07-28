@@ -70,6 +70,11 @@ export class SessionSkillRegistry implements AgentSkillRegistry {
   }
 
   getSkill(name: string): SkillDefinition | undefined {
+    const qualified = parsePluginSkillName(name);
+    if (qualified !== undefined) {
+      const pluginSkill = this.getPluginSkill(qualified.pluginId, qualified.skillName);
+      if (pluginSkill !== undefined) return qualifyPluginSkill(pluginSkill);
+    }
     return this.byName.get(normalizeSkillName(name));
   }
 
@@ -107,7 +112,12 @@ export class SessionSkillRegistry implements AgentSkillRegistry {
   }
 
   listSkills(): readonly SkillDefinition[] {
-    return [...this.byName.values()].toSorted((a, b) => a.name.localeCompare(b.name));
+    const pluginSkills = [...this.byPluginAndName.values()].map(qualifyPluginSkill);
+    const pluginNames = new Set(pluginSkills.map((skill) => normalizeSkillName(skill.name)));
+    const nonPluginSkills = [...this.byName.values()].filter(
+      (skill) => skill.plugin === undefined && !pluginNames.has(normalizeSkillName(skill.name)),
+    );
+    return [...nonPluginSkills, ...pluginSkills].toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
   listInvocableSkills(): readonly SkillDefinition[] {
@@ -143,8 +153,28 @@ export class SessionSkillRegistry implements AgentSkillRegistry {
   }
 }
 
+interface PluginSkillName {
+  readonly pluginId: string;
+  readonly skillName: string;
+}
+
+function parsePluginSkillName(name: string): PluginSkillName | undefined {
+  const separator = name.indexOf(':');
+  if (separator <= 0 || separator === name.length - 1) return undefined;
+  return {
+    pluginId: name.slice(0, separator),
+    skillName: name.slice(separator + 1),
+  };
+}
+
+function qualifyPluginSkill(skill: SkillDefinition): SkillDefinition {
+  const plugin = skill.plugin;
+  if (plugin === undefined) return skill;
+  return { ...skill, name: `${plugin.id}:${skill.name}` };
+}
+
 function pluginSkillKey(pluginId: string, skillName: string): string {
-  return `${pluginId}\0${normalizeSkillName(skillName)}`;
+  return `${pluginId.toLowerCase()}\0${normalizeSkillName(skillName)}`;
 }
 
 const SOURCE_GROUPS: ReadonlyArray<{ readonly source: SkillSource; readonly label: string }> = [

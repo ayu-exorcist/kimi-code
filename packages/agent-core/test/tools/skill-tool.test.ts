@@ -203,6 +203,31 @@ describe('SkillTool execution', () => {
     );
   });
 
+  it('loads a plugin skill by its qualified name', async () => {
+    const methods = skillToolMethods();
+    const pluginSkill: SkillDefinition = {
+      ...skill('review', {}, 'review body'),
+      source: 'extra',
+      plugin: {
+        id: 'superpowers',
+        instructions: 'Use the plugin review workflow.',
+      },
+    };
+    const tool = skillTool(registry([pluginSkill]), methods);
+
+    const result = await execute(tool, { skill: 'superpowers:review' });
+
+    expect(result.output).toBe(
+      'Skill "superpowers:review" loaded inline. Follow its instructions.',
+    );
+    expect(methods.recordSkillActivation).toHaveBeenCalledWith(
+      expect.objectContaining({ skillName: 'superpowers:review' }),
+    );
+    expect(methods.recordUserMessage.mock.calls[0]?.[0][0]?.text).toContain(
+      '<kimi-skill-loaded name="superpowers:review"',
+    );
+  });
+
   it('expands skill body placeholders for model-invoked inline skills', async () => {
     const methods = skillToolMethods();
     const tool = skillTool(
@@ -293,6 +318,40 @@ describe('SkillTool execution', () => {
     expect(methods.recordUserMessage.mock.calls[0]?.[0][0]?.text).toContain(
       'trigger="nested-skill"',
     );
+  });
+});
+
+describe('SessionSkillRegistry plugin names', () => {
+  it('resolves and lists plugin skills by canonical qualified names', () => {
+    const skills = new SessionSkillRegistry();
+    skills.register(skill('review'));
+    skills.register(skill('plugin-a:review', {}, 'Legacy colon-named skill'));
+    skills.register({
+      ...skill('review', {}, 'Plugin A review'),
+      source: 'extra',
+      plugin: { id: 'plugin-a' },
+    });
+    skills.register({
+      ...skill('review', {}, 'Plugin B review'),
+      source: 'extra',
+      plugin: { id: 'plugin-b' },
+    });
+
+    expect(skills.getSkill('review')).toMatchObject({
+      name: 'review',
+      source: 'user',
+    });
+    expect(skills.getSkill('PLUGIN-A:REVIEW')).toMatchObject({
+      name: 'plugin-a:review',
+      content: 'Plugin A review',
+    });
+    expect(skills.listSkills().map((item) => item.name)).toEqual([
+      'plugin-a:review',
+      'plugin-b:review',
+      'review',
+    ]);
+    expect(skills.getModelSkillListing()).toContain('- plugin-a:review: desc for review');
+    expect(skills.getModelSkillListing()).toContain('- plugin-b:review: desc for review');
   });
 });
 

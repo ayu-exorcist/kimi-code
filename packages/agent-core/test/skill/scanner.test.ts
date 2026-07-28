@@ -874,9 +874,17 @@ describe('resolveSkillRoots extra dirs', () => {
     ]);
 
     expect(registry.getSkill('using-superpowers')?.content).toBe('project body');
+    expect(registry.getSkill('superpowers:using-superpowers')).toMatchObject({
+      name: 'superpowers:using-superpowers',
+      content: 'plugin body',
+    });
     expect(registry.getPluginSkill('superpowers', 'using-superpowers')?.content).toBe(
       'plugin body',
     );
+    expect(registry.listSkills().map((skill) => skill.name)).toEqual([
+      'superpowers:using-superpowers',
+      'using-superpowers',
+    ]);
   });
 
   it('stamps skills discovered via extra dirs with source=extra', async () => {

@@ -319,6 +319,48 @@ describe('InMemorySkillCatalog prompt rendering', () => {
 });
 
 describe('InMemorySkillCatalog plugin lookup', () => {
+  it('resolves qualified plugin names without changing bare-name precedence', () => {
+    const registry = new InMemorySkillCatalog();
+    registry.register(makeSkill('review', 'project', 'project skill'));
+    registry.register(
+      makeSkill('review', 'extra', 'plugin skill', undefined, {}, {
+        id: 'superpowers',
+      }),
+    );
+
+    expect(registry.getSkill('review')).toMatchObject({
+      name: 'review',
+      description: 'project skill',
+      source: 'project',
+    });
+    expect(registry.getSkill('SUPERPOWERS:REVIEW')).toMatchObject({
+      name: 'superpowers:review',
+      description: 'plugin skill',
+      plugin: { id: 'superpowers' },
+    });
+    expect(registry.getSkill('unknown:review')).toBeUndefined();
+  });
+
+  it('lists same-name plugin skills under canonical qualified names', () => {
+    const registry = new InMemorySkillCatalog();
+    registry.register(makeSkill('plugin-a:review', 'user', 'Legacy colon-named skill'));
+    registry.register(
+      makeSkill('review', 'extra', 'Plugin A review', undefined, {}, { id: 'plugin-a' }),
+    );
+    registry.register(
+      makeSkill('review', 'extra', 'Plugin B review', undefined, {}, { id: 'plugin-b' }),
+    );
+
+    expect(registry.listSkills().map((skill) => skill.name)).toEqual([
+      'plugin-a:review',
+      'plugin-b:review',
+    ]);
+    const listing = registry.getModelSkillListing();
+    expect(listing).toContain('- plugin-a:review: Plugin A review');
+    expect(listing).toContain('- plugin-b:review: Plugin B review');
+    expect(listing).not.toMatch(/^- review:/m);
+  });
+
   it('keeps plugin-specific lookup when a same-name project skill is registered first', () => {
     const registry = new InMemorySkillCatalog();
     registry.register(makeSkill('review', 'project', 'project skill'));
