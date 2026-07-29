@@ -49,6 +49,7 @@ export default defineConfig({
     '@moonshot-ai/agent-core-v2': resolve(appRoot, '../../packages/agent-core-v2/src'),
     '@moonshot-ai/klient/memory': resolve(appRoot, '../../packages/klient/src/transports/memory'),
     '@moonshot-ai/klient': resolve(appRoot, '../../packages/klient/src'),
+    '@moonshot-ai/minidb': resolve(appRoot, '../../packages/minidb/src'),
   },
   define: {
     [BUILT_IN_CATALOG_DEFINE]: builtInCatalogDefine(),
