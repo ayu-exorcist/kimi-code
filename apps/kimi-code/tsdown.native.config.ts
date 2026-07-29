@@ -47,6 +47,7 @@ export default defineConfig({
   alias: {
     '@': resolve(appRoot, 'src'),
     '@moonshot-ai/agent-core-v2': resolve(appRoot, '../../packages/agent-core-v2/src'),
+    '@moonshot-ai/klient/memory': resolve(appRoot, '../../packages/klient/src/transports/memory'),
     '@moonshot-ai/klient': resolve(appRoot, '../../packages/klient/src'),
   },
   define: {
