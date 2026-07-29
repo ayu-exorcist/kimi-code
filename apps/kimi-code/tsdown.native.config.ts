@@ -46,6 +46,8 @@ export default defineConfig({
   plugins: [rawTextPlugin()],
   alias: {
     '@': resolve(appRoot, 'src'),
+    '@moonshot-ai/agent-core-v2': resolve(appRoot, '../../packages/agent-core-v2/src'),
+    '@moonshot-ai/klient': resolve(appRoot, '../../packages/klient/src'),
   },
   define: {
     [BUILT_IN_CATALOG_DEFINE]: builtInCatalogDefine(),
