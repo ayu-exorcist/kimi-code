@@ -206,7 +206,9 @@ You can also switch models temporarily without touching the config file — by s
 
 The secondary model is a second model pointer next to the primary `default_model` — typically a cheaper model that features can bind to when they do not need the main model. Its consumer today is subagent spawning: when set, newly spawned subagents (`Agent` / `AgentSwarm`) bind to it by default instead of inheriting the main agent's model, and the main agent is told it can pick per spawn between `"secondary"` (this model) and `"primary"` (the main model). When unset, subagents inherit the main agent's model.
 
-This feature is experimental and disabled by default. Under `kimi web`, enable it with `KIMI_CODE_EXPERIMENTAL_SECONDARY_MODEL=1`. Under `kimi -p`, `KIMI_CODE_EXPERIMENTAL_FLAG=1` is already required to select the v2 engine and also enables this feature. The interactive TUI ignores the configuration.
+This feature is experimental and disabled by default. Enable it with `KIMI_CODE_EXPERIMENTAL_SECONDARY_MODEL=1`, or the master `KIMI_CODE_EXPERIMENTAL_FLAG=1`. It takes effect in every launch mode, including the interactive TUI.
+
+In the interactive TUI, the [`/secondary_model`](../reference/slash-commands.md) command opens a model picker that writes this section and live-applies it to the current session, so newly spawned subagents bind the new secondary model right away.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -404,6 +406,8 @@ Alongside `config.toml`, the CLI keeps terminal-UI and client preferences in a c
 | `[notifications].enabled` | `boolean` | `true` | Whether desktop notifications are sent |
 | `[notifications].notification_condition` | `string` | `unfocused` | When to notify: `unfocused` (only when the terminal is not focused) or `always` |
 | `[upgrade].auto_install` | `boolean` | `true` | Whether new versions are installed automatically |
+| `[status_line].items` | `string[]` | `[]` | Built-in slots to show on the first footer line and their order: `mode`, `goal`, `model`, `tasks`, `cwd`, `git`, `tips`. Unset keeps the default layout; unknown ids are skipped with a warning |
+| `[status_line].command` | `string` | `""` | Custom status line command. Its first stdout line replaces the first footer line, with a JSON snapshot (model, cwd, git branch, permission mode, plan mode, context usage, session id, version) passed on stdin. Runs are capped at 300ms and throttled to once per second; failures fall back to the built-in layout |
 
 ```toml
 # ~/.kimi-code/tui.toml
@@ -419,6 +423,10 @@ notification_condition = "unfocused" # "unfocused" | "always"
 
 [upgrade]
 auto_install = true
+
+# [status_line]
+# items = ["mode", "goal", "model", "tasks", "cwd", "git", "tips"]
+# command = "~/.kimi-code/statusline.sh"
 ```
 
 Changes apply on the next start, or immediately with `/reload-tui` (which reloads only `tui.toml`); `/reload` reloads both `config.toml` and `tui.toml`.
