@@ -983,7 +983,10 @@ function renderPluginSessionStartReminder(
     }
     blocks.push(
       `<plugin_session_start plugin="${escapeXmlAttr(sessionStart.pluginId)}" ` +
-      `skill="${escapeXmlAttr(skill.name)}">\n${catalog.renderSkillPrompt(skill, '')}\n</plugin_session_start>`,
+      `skill="${escapeXmlAttr(`${sessionStart.pluginId}:${skill.name}`)}">\n` +
+      `The plugin skill "${sessionStart.pluginId}:${skill.name}" is already preloaded. ` +
+      'Do not invoke it again via the Skill tool.\n\n' +
+      `${catalog.renderSkillPrompt(skill, '')}\n</plugin_session_start>`,
     );
   }
   return blocks.length > 0 ? blocks.join('\n') : undefined;

@@ -315,11 +315,11 @@ describe('PluginManager', () => {
     expect(manager.pluginSkillRoots()).toEqual([]);
   });
 
-  it('enabledSessionStarts() returns only enabled plugin sessionStart declarations', async () => {
+  it('uses the discovered canonical sessionStart skill', async () => {
     const home = await makeKimiHome();
     const root = await makePlugin('demo', {
       skills: true,
-      sessionStartSkill: 'demo-skill',
+      sessionStartSkill: 'DEMO-SKILL',
     });
     const manager = new PluginManager({ kimiHomeDir: home });
     await manager.load();
@@ -330,6 +330,29 @@ describe('PluginManager', () => {
 
     await manager.setEnabled('demo', false);
     expect(manager.enabledSessionStarts()).toEqual([]);
+  });
+
+  it('warns and disables only an undiscovered sessionStart declaration', async () => {
+    const home = await makeKimiHome();
+    const root = await makePlugin('demo', {
+      skills: true,
+      sessionStartSkill: 'missing-skill',
+      mcpServers: { finance: { command: 'finance-mcp' } },
+    });
+    const manager = new PluginManager({ kimiHomeDir: home });
+    await manager.load();
+    await manager.install(root);
+
+    const record = manager.get('demo');
+    expect(record?.state).toBe('ok');
+    expect(record?.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'warn',
+        message: expect.stringContaining('sessionStart skill "missing-skill" was not discovered'),
+      }),
+    );
+    expect(manager.enabledSessionStarts()).toEqual([]);
+    expect(manager.enabledMcpServers()).toHaveProperty('plugin-demo:finance');
   });
 
   it('maps manifest skillInstructions to record skillInstructions', async () => {

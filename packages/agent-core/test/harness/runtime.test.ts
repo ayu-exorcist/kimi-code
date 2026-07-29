@@ -1114,7 +1114,7 @@ base_url = "https://search.example.test/v1"
 
     const reminders = pluginSessionStartReminders(core, created.id);
     expect(reminders).toHaveLength(1);
-    expect(reminders[0]).toContain('<plugin_session_start plugin="demo" skill="greeter">');
+    expect(reminders[0]).toContain('<plugin_session_start plugin="demo" skill="demo:greeter">');
     expect(reminders[0]).toContain('NEW BODY');
     expect(reminders[0]).not.toContain('OLD BODY');
     expect(reminders[0]).toContain('supersedes any earlier plugin_session_start');

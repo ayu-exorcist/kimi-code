@@ -316,7 +316,7 @@ export class PluginManager {
     const out: EnabledPluginSessionStart[] = [];
     for (const record of this.records.values()) {
       if (!record.enabled || record.state !== 'ok') continue;
-      const skill = record.manifest?.sessionStart?.skill;
+      const skill = record.effectiveSessionStartSkill;
       if (skill === undefined) continue;
       out.push({ pluginId: record.id, skillName: skill });
     }
@@ -532,6 +532,13 @@ async function recordFrom(input: {
 }): Promise<PluginRecord> {
   const { parsed } = input;
   const hasError = parsed.diagnostics.some((d) => d.severity === 'error');
+  const discovery = await discoverPluginSkills(input.id, parsed.manifest, input.discoverSkills);
+  const effectiveSessionStartSkill = findEffectiveSessionStartSkill(parsed.manifest, discovery);
+  const sessionStartDiagnostic = invalidSessionStartDiagnostic(
+    input.id,
+    parsed.manifest,
+    effectiveSessionStartSkill,
+  );
   return {
     id: input.id,
     root: input.root,
@@ -543,16 +550,16 @@ async function recordFrom(input: {
     originalSource: input.originalSource,
     capabilities: input.capabilities,
     github: input.github,
-    skillCount: await countDiscoveredPluginSkills(
-      input.id,
-      parsed.manifest,
-      input.discoverSkills,
-    ),
+    skillCount: discovery.skills.length,
+    effectiveSessionStartSkill,
     manifest: parsed.manifest,
     manifestKind: parsed.manifestKind,
     manifestPath: parsed.manifestPath,
     shadowedManifestPath: parsed.shadowedManifestPath,
-    diagnostics: parsed.diagnostics,
+    diagnostics:
+      sessionStartDiagnostic === undefined
+        ? parsed.diagnostics
+        : [...parsed.diagnostics, sessionStartDiagnostic],
     skillInstructions: parsed.manifest?.skillInstructions,
   };
 }
@@ -685,18 +692,41 @@ function isKimiNativeBinary(): boolean {
   return !path.basename(process.execPath).toLowerCase().startsWith('node');
 }
 
-async function countDiscoveredPluginSkills(
+async function discoverPluginSkills(
   pluginId: string,
   manifest: PluginRecord['manifest'],
   discoverSkills: (roots: readonly SkillRoot[]) => Promise<SkillDiscoveryResult>,
-): Promise<number> {
+): Promise<SkillDiscoveryResult> {
   const dirs = manifest?.skills ?? [];
-  if (dirs.length === 0) return 0;
+  if (dirs.length === 0) return { skills: [], skipped: [], scannedRoots: [] };
   const roots: SkillRoot[] = dirs.map((dir) => ({
     path: dir,
     source: 'extra',
     plugin: { id: pluginId, instructions: manifest?.skillInstructions },
   }));
-  const result = await discoverSkills(roots);
-  return result.skills.length;
+  return discoverSkills(roots);
+}
+
+function findEffectiveSessionStartSkill(
+  manifest: PluginRecord['manifest'],
+  discovery: SkillDiscoveryResult,
+): string | undefined {
+  const declaredSkill = manifest?.sessionStart?.skill;
+  if (declaredSkill === undefined) return undefined;
+  return discovery.skills.find((skill) => skill.name.toLowerCase() === declaredSkill.toLowerCase())?.name;
+}
+
+function invalidSessionStartDiagnostic(
+  pluginId: string,
+  manifest: PluginRecord['manifest'],
+  effectiveSessionStartSkill: string | undefined,
+): PluginRecord['diagnostics'][number] | undefined {
+  const declaredSkill = manifest?.sessionStart?.skill;
+  if (declaredSkill === undefined || effectiveSessionStartSkill !== undefined) return undefined;
+  return {
+    severity: 'warn',
+    message:
+      `Plugin "${pluginId}" sessionStart skill "${declaredSkill}" was not discovered ` +
+      "in the plugin's declared skill roots; session-start guidance is disabled.",
+  };
 }

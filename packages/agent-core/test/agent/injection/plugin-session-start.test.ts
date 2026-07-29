@@ -117,7 +117,11 @@ describe('PluginSessionStartInjector', () => {
     const injector = new PluginSessionStartInjector(agent);
     await injector.inject();
     const text = lastReminder(agent);
-    expect(text).toContain('<plugin_session_start plugin="superpowers" skill="using-superpowers">');
+    expect(text).toContain('<plugin_session_start plugin="superpowers" skill="superpowers:using-superpowers">');
+    expect(text).toContain(
+      'The plugin skill "superpowers:using-superpowers" is already preloaded.',
+    );
+    expect(text).toContain('Do not invoke it again via the Skill tool.');
     expect(text).toContain('<kimi-plugin-instructions plugin="superpowers">');
     expect(text).toContain('AskUserQuestion');
     expect(text).toContain('TodoList');
@@ -133,7 +137,7 @@ describe('PluginSessionStartInjector', () => {
     const injector = new PluginSessionStartInjector(agent);
     await injector.inject();
     const text = lastReminder(agent);
-    expect(text).toContain('<plugin_session_start plugin="superpowers" skill="using-superpowers">');
+    expect(text).toContain('<plugin_session_start plugin="superpowers" skill="superpowers:using-superpowers">');
     expect(text).toContain('body');
     expect(text).not.toContain('<kimi-plugin-instructions plugin="superpowers">');
     expect(text).not.toContain('AskUserQuestion');
@@ -236,7 +240,7 @@ describe('renderPluginSessionStartReminder', () => {
       ]),
     });
     expect(text).toContain(
-      '<plugin_session_start plugin="superpowers" skill="using-superpowers">',
+      '<plugin_session_start plugin="superpowers" skill="superpowers:using-superpowers">',
     );
     expect(text).toContain('plugin body');
   });

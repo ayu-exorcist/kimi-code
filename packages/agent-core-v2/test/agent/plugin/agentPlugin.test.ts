@@ -129,7 +129,9 @@ describe('AgentPluginService plugin session-start wiring', () => {
     const injected = findPluginSessionStartMessages(ctx).at(-1);
     expect(injected).toBeDefined();
     const text = injected === undefined ? '' : messageText(injected);
-    expect(text).toContain('<plugin_session_start plugin="demo" skill="demo-skill">');
+    expect(text).toContain('<plugin_session_start plugin="demo" skill="demo:demo-skill">');
+    expect(text).toContain('The plugin skill "demo:demo-skill" is already preloaded.');
+    expect(text).toContain('Do not invoke it again via the Skill tool.');
     expect(text).toContain('Do the demo thing.');
     expect(text).toContain('Always be helpful.');
   });
@@ -226,7 +228,7 @@ describe('AgentPluginService plugin session-start wiring', () => {
     const messages = findPluginSessionStartMessages(ctx);
     expect(messages.length).toBeGreaterThanOrEqual(2);
     const latest = messageText(messages.at(-1)!);
-    expect(latest).toContain('<plugin_session_start plugin="demo" skill="demo-skill">');
+    expect(latest).toContain('<plugin_session_start plugin="demo" skill="demo:demo-skill">');
     expect(latest).toContain('supersedes any earlier plugin_session_start reminder');
     sinkChange.dispose();
   });

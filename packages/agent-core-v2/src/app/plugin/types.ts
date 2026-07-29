@@ -105,6 +105,11 @@ export interface PluginRecord {
   readonly github?: PluginGithubMetadata;
   readonly skillInstructions?: string;
   readonly skillCount: number;
+  /**
+   * The canonical name of the declared session-start skill, when it was
+   * discovered from this plugin's own skill roots during materialization.
+   */
+  readonly effectiveSessionStartSkill?: string;
   readonly manifest?: PluginManifest;
   readonly manifestKind?: PluginManifestKind;
   readonly manifestPath?: string;

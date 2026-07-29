@@ -148,7 +148,10 @@ function renderSessionStartBlock(
 ): string {
   return (
     `<plugin_session_start plugin="${escapeXmlAttr(sessionStart.pluginId)}" ` +
-    `skill="${escapeXmlAttr(skill.name)}">\n${skillContent}\n</plugin_session_start>`
+    `skill="${escapeXmlAttr(`${sessionStart.pluginId}:${skill.name}`)}">\n` +
+    `The plugin skill "${sessionStart.pluginId}:${skill.name}" is already preloaded. ` +
+    'Do not invoke it again via the Skill tool.\n\n' +
+    `${skillContent}\n</plugin_session_start>`
   );
 }
 

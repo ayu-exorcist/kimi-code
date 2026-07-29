@@ -397,15 +397,47 @@ describe('PluginManager consumption plane', () => {
     await rm(isolated, { recursive: true, force: true });
   });
 
-  it('enabledSessionStarts() returns only enabled plugin sessionStart declarations', async () => {
+  it('caches the discovered canonical sessionStart skill without rescanning at consumption time', async () => {
     const home = await makeKimiHome();
-    const root = await makePlugin('demo', { skills: true, sessionStartSkill: 'demo-skill' });
+    const root = await makePlugin('demo', { skills: true, sessionStartSkill: 'CANONICAL' });
+    const discoverSkills = vi.fn(async () => ({
+      skills: [stubSkill('canonical')],
+      skipped: [],
+      scannedRoots: [],
+    }));
+    const manager = new PluginManager({ kimiHomeDir: home, discoverSkills });
+    await manager.load();
+    await manager.install(root);
+
+    expect(manager.enabledSessionStarts()).toEqual([{ pluginId: 'demo', skillName: 'canonical' }]);
+    expect(manager.enabledSessionStarts()).toEqual([{ pluginId: 'demo', skillName: 'canonical' }]);
+    expect(discoverSkills).toHaveBeenCalledTimes(1);
+
+    await manager.setEnabled('demo', false);
+    expect(manager.enabledSessionStarts()).toEqual([]);
+  });
+
+  it('warns and disables only an undiscovered sessionStart declaration', async () => {
+    const home = await makeKimiHome();
+    const root = await makePlugin('demo', {
+      skills: true,
+      sessionStartSkill: 'missing-skill',
+      mcpServers: { finance: { command: 'finance-mcp' } },
+    });
     const manager = new PluginManager({ kimiHomeDir: home });
     await manager.load();
     await manager.install(root);
-    expect(manager.enabledSessionStarts()).toEqual([{ pluginId: 'demo', skillName: 'demo-skill' }]);
-    await manager.setEnabled('demo', false);
+
+    const record = manager.get('demo');
+    expect(record?.state).toBe('ok');
+    expect(record?.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'warn',
+        message: expect.stringContaining('sessionStart skill "missing-skill" was not discovered'),
+      }),
+    );
     expect(manager.enabledSessionStarts()).toEqual([]);
+    expect(manager.enabledMcpServers()).toHaveProperty('plugin-demo:finance');
   });
 
   it('setMcpServerEnabled() persists explicit MCP server state with cwd + env + runtime name', async () => {
