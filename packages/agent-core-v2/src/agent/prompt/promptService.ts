@@ -23,6 +23,7 @@ import { USER_PROMPT_ORIGIN, type ContextMessage } from '#/agent/contextMemory/t
 import { IAgentFullCompactionService } from '#/agent/fullCompaction/fullCompaction';
 import { IAgentLoopService, type Turn, type TurnResult } from '#/agent/loop/loop';
 import { steerTurn } from '#/agent/loop/turnOps';
+import { ISessionLanguagePolicy } from '#/session/languagePolicy/languagePolicy';
 import { IAgentStateService } from '#/agent/state/agentState';
 import { IAgentSystemReminderService } from '#/agent/systemReminder/systemReminder';
 import type { ExecutableToolResult } from '#/tool/toolContract';
@@ -81,6 +82,7 @@ export class AgentPromptService implements IAgentPromptService {
     @IWireService private readonly wire: IWireService,
     @IEventBus private readonly eventBus: IEventBus,
     @IAgentStateService private readonly states: IAgentStateService,
+    @ISessionLanguagePolicy private readonly languagePolicy: ISessionLanguagePolicy,
   ) {
     this.states.register(promptLaunchingKey);
     toolExecutor.hooks.onDidExecuteTool.register('prompt-service-delivery', async (ctx, next) => {
@@ -100,6 +102,9 @@ export class AgentPromptService implements IAgentPromptService {
   async enqueue(input: PromptInput): Promise<PromptHandle> {
     const id = input.id ?? input.message.id ?? newMessageId();
     const message = { ...input.message, id };
+    if (message.origin?.kind === 'user') {
+      await this.languagePolicy.observeUserPrompt(message.content);
+    }
     const launchedDeferred = deferred<Turn | undefined>();
     const completionDeferred = deferred<PromptCompletion>();
     const record = {} as Record;

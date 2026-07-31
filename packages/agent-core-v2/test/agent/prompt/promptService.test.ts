@@ -24,6 +24,7 @@ import { IEventBus } from '#/app/event/eventBus';
 import { EventBusService } from '#/app/event/eventBusService';
 import { ErrorCodes, Error2 } from '#/errors';
 import { createHooks } from '#/hooks';
+import { ISessionLanguagePolicy } from '#/session/languagePolicy/languagePolicy';
 import { IWireService } from '#/wire/wire';
 
 import { stubContextMemory } from '../contextMemory/stubs';
@@ -39,6 +40,16 @@ function harness() {
   onTestFinished(() => disposables.dispose());
   const context = stubContextMemory();
   const loop = stubLoopWithHooks({ pendingTurnResult: true });
+  const observed: string[] = [];
+  const languagePolicy = {
+    _serviceBrand: undefined,
+    ready: Promise.resolve(),
+    onDidChange: Event.None,
+    replyLanguage: () => undefined,
+    observeUserPrompt: async (content: ContextMessage['content']) => {
+      observed.push(content.filter((part) => part.type === 'text').map((part) => part.text).join(''));
+    },
+  } as ISessionLanguagePolicy;
   const fullCompaction = {
     _serviceBrand: undefined,
     compacting: null,
@@ -54,12 +65,13 @@ function harness() {
       reg.defineInstance(IWireService, stubWire());
       reg.defineInstance(IAgentToolExecutorService, stubToolExecutor());
       reg.defineInstance(IAgentFullCompactionService, fullCompaction);
+      reg.defineInstance(ISessionLanguagePolicy, languagePolicy);
       reg.define(IEventBus, EventBusService);
       reg.define(IAgentSystemReminderService, AgentSystemReminderService);
       reg.define(IAgentPromptService, AgentPromptService);
     }
   });
-  return { prompt: ix.get(IAgentPromptService), loop, context, fullCompaction };
+  return { prompt: ix.get(IAgentPromptService), loop, context, fullCompaction, observed };
 }
 
 describe('AgentPromptService', () => {
@@ -111,6 +123,15 @@ describe('AgentPromptService', () => {
     const { prompt } = harness();
     await prompt.inject({ ...message('system'), origin: { kind: 'injection', variant: 'test' } });
     expect(prompt.list()).toEqual({ active: undefined, pending: [] });
+  });
+
+  it('observes only explicit user-origin prompts before they can launch', async () => {
+    const { prompt, observed } = harness();
+    await prompt.enqueue({ message: message('user input') });
+    await prompt.enqueue({ message: { ...message('injected'), origin: { kind: 'injection', variant: 'test' } } });
+    await prompt.enqueue({ message: { role: 'user', content: [{ type: 'text', text: 'legacy input' }], toolCalls: [] } });
+
+    expect(observed).toEqual(['user input']);
   });
 
   it('settles blocked prompts', async () => {

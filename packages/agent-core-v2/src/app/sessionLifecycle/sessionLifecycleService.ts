@@ -79,6 +79,7 @@ import { ISessionContext, sessionContextSeed } from '#/session/sessionContext/se
 import { ISessionMetadata, type SessionMeta } from '#/session/sessionMetadata/sessionMetadata';
 import { ISessionSkillCatalog } from '#/session/sessionSkillCatalog/skillCatalog';
 import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
+import { ISessionLanguagePolicy } from '#/session/languagePolicy/languagePolicy';
 import { ISessionToolPolicy } from '#/session/sessionToolPolicy/sessionToolPolicy';
 import { ISessionWorkspaceContext } from '#/session/workspaceContext/workspaceContext';
 import { IWireService } from '#/wire/wire';
@@ -216,6 +217,7 @@ export class SessionLifecycleService extends Disposable implements ISessionLifec
     }
     try {
       await handle.accessor.get(ISessionMetadata).ready;
+      await handle.accessor.get(ISessionLanguagePolicy).ready;
       await handle.accessor.get(ISessionToolPolicy).ready;
       void handle.accessor.get(ISessionSkillCatalog).ready;
       await handle.accessor.get(ISessionAgentProfileCatalog).ready;

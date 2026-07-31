@@ -71,6 +71,7 @@ import { FlagResolver, type ExperimentalFlagResolver } from '../flags';
 import { ImageLimits } from '../tools/support/image-limits';
 import { abortError } from '../utils/abort';
 import { resolveMainAgentProfile } from './main-agent-profile';
+import { SessionReplyLanguagePolicy, type ReplyLanguage } from './language-policy';
 
 export interface SessionOptions {
   readonly kaos: Kaos;
@@ -164,6 +165,8 @@ export interface SessionMeta {
   title: string;
   isCustomTitle: boolean;
   lastPrompt?: string;
+  /** Session-wide user-facing language, persisted without source prompt text. */
+  replyLanguage?: ReplyLanguage;
   forkedFrom?: string;
   /** Absolute working directory the session was created in. Persisted so the
    *  session directory is self-describing and the global session index does not
@@ -221,6 +224,8 @@ export class Session {
   readonly hookEngine: HookEngine;
   readonly experimentalFlags: ExperimentalFlagResolver;
   readonly imageLimits: ImageLimits;
+  /** Session-scoped reply language shared by main and every child Agent. */
+  readonly replyLanguagePolicy: SessionReplyLanguagePolicy;
   readonly agentCatalog: SessionAgentProfileCatalog;
   private toolKaos: Kaos;
   private persistenceKaos: Kaos;
@@ -272,6 +277,16 @@ export class Session {
       this.logHandle?.logger ??
       (options.id === undefined ? log : log.createChild({ sessionId: options.id }));
     this.rpc = options.rpc;
+    this.replyLanguagePolicy = new SessionReplyLanguagePolicy({
+      onDidChange: async (replyLanguage) => {
+        this.metadata = {
+          ...this.metadata,
+          replyLanguage,
+          updatedAt: new Date().toISOString(),
+        };
+        await this.writeMetadata();
+      },
+    });
     this.experimentalFlags = options.experimentalFlags ?? new FlagResolver();
     this.imageLimits = options.imageLimits ?? new ImageLimits();
     this.hookEngine = new HookEngine(options.hooks, {
@@ -1036,6 +1051,8 @@ export class Session {
     const persisted = JSON.parse(text) as PersistedSessionState;
     const { agentProfileCatalog, ...metadata } = persisted;
     this.metadata = metadata;
+    // Restore before any main or lazy child Agent is instantiated on resume.
+    this.replyLanguagePolicy.restore(metadata.replyLanguage);
     if (agentProfileCatalog === undefined) {
       if (this.options.agents?.refreshPluginAgents === true) {
         this.agentProfileSnapshot = this.agentCatalog.snapshot();
@@ -1208,6 +1225,7 @@ export class Session {
       pluginSystemPrompts: this.pluginSystemPrompts,
       experimentalFlags: this.experimentalFlags,
       imageLimits: this.imageLimits,
+      replyLanguagePolicy: this.replyLanguagePolicy,
       additionalDirs: parentAgent?.getAdditionalDirs() ?? this.additionalDirs,
       systemPromptContextProvider: () =>
         prepareSystemPromptContext(

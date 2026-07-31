@@ -92,6 +92,15 @@ export * from '#/session/sessionMetadata/sessionMetadata';
 export * from '#/session/sessionMetadata/sessionMetadataService';
 export * from '#/session/sessionActivity/sessionActivity';
 export * from '#/session/sessionActivity/sessionActivityService';
+export {
+  type ReplyLanguage,
+  type SessionLanguagePolicyChangedEvent,
+} from '#/session/languagePolicy/languagePolicy';
+export {
+  SessionLanguagePolicyService,
+  detectReplyLanguage,
+  sessionLanguagePolicyStateKey,
+} from '#/session/languagePolicy/languagePolicyService';
 export * from '#/session/sessionToolPolicy/sessionToolPolicy';
 export * from '#/session/sessionToolPolicy/sessionToolPolicyService';
 export * from '#/app/config/config';
@@ -473,6 +482,8 @@ export * from '#/agent/contextSize/contextSizeOps';
 export * from '#/agent/contextSize/contextSizeService';
 export * from '#/agent/contextInjector/contextInjector';
 export * from '#/agent/contextInjector/contextInjectorService';
+export * from '#/agent/languagePolicy/languagePolicy';
+export * from '#/agent/languagePolicy/languagePolicyInjectionService';
 export * from '#/agent/plugin/agentPlugin';
 export * from '#/agent/plugin/agentPluginService';
 import '#/agent/externalHooks/configSection';

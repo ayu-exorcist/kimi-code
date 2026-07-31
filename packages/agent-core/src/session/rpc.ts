@@ -121,6 +121,7 @@ export class SessionAPIImpl implements PromisableMethods<SessionAPI> {
   }
 
   async prompt({ agentId, ...payload }: AgentScopedPayload<PromptPayload>) {
+    await this.session.replyLanguagePolicy.observeUserPrompt(payload.input);
     if (agentId === 'main') {
       await this.updatePromptMetadata(promptMetadataTextFromPayload(payload));
     }
@@ -128,6 +129,7 @@ export class SessionAPIImpl implements PromisableMethods<SessionAPI> {
   }
 
   async steer({ agentId, ...payload }: AgentScopedPayload<SteerPayload>) {
+    await this.session.replyLanguagePolicy.observeUserPrompt(payload.input);
     if (agentId === 'main') {
       // A steer is user input like a prompt — and can even launch the
       // session's first turn (e.g. goal mode) — so keep title/lastPrompt in

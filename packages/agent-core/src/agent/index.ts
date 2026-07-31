@@ -22,6 +22,7 @@ import {
 } from '../profile';
 import { composePluginSections, PLUGIN_SECTIONS_MAX_BYTES } from '../profile/plugin-sections';
 import type { ModelProvider } from '../session/provider-manager';
+import type { SessionReplyLanguagePolicy } from '../session/language-policy';
 import type { SessionSubagentHost } from '../session/subagent-host';
 import { noopTelemetryClient, type TelemetryClient } from '../telemetry';
 import type { PromisableMethods } from '../utils/types';
@@ -108,6 +109,8 @@ export interface AgentOptions {
   /** Owner-scoped [image] limits; a standalone Agent gets env/built-in defaults. */
   readonly imageLimits?: ImageLimits;
   readonly replay?: ReplayBuilderOptions;
+  /** Shared Session policy; standalone Agents intentionally have no policy. */
+  readonly replyLanguagePolicy?: SessionReplyLanguagePolicy;
   readonly additionalDirs?: readonly string[];
   readonly systemPromptContextProvider?: (() => Promise<PreparedSystemPromptContext>) | undefined;
 }
@@ -142,6 +145,7 @@ export class Agent {
   readonly telemetry: TelemetryClient;
   readonly experimentalFlags: ExperimentalFlagResolver;
   readonly imageLimits: ImageLimits;
+  readonly replyLanguagePolicy?: SessionReplyLanguagePolicy;
 
   readonly llmRequestLogger: LlmRequestLogger;
   readonly llmRequestRecorder: LlmRequestRecorder;
@@ -209,6 +213,7 @@ export class Agent {
     this.telemetry = options.telemetry ?? noopTelemetryClient;
     this.experimentalFlags = options.experimentalFlags ?? new FlagResolver();
     this.imageLimits = options.imageLimits ?? new ImageLimits();
+    this.replyLanguagePolicy = options.replyLanguagePolicy;
     this.additionalDirs = normalizeAdditionalDirs(options.additionalDirs ?? []);
     this.systemPromptContextProvider = options.systemPromptContextProvider;
 

@@ -160,6 +160,8 @@ describe('renderSystemPrompt', () => {
     expect(prompt).toContain('/work');
     expect(prompt).toContain('# Skills');
     expect(prompt).toContain('SKILLS');
+    expect(prompt).toContain("session's current user-facing language");
+    expect(prompt).toContain('Repository artifacts');
   });
 
   it('omits the skills section when the profile disables the Skill tool', () => {

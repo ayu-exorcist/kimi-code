@@ -148,6 +148,7 @@ const DOMAIN_LAYER = new Map([
   ['skillCatalog', 3],
   ['sessionSkillCatalog', 3],
   ['sessionAgentProfileCatalog', 3],
+  ['sessionLanguagePolicy', 3],
   ['sessionToolPolicy', 3],
   ['permissionGate', 3],
   ['toolApproval', 3],
@@ -183,6 +184,7 @@ const DOMAIN_LAYER = new Map([
   ['toolDedupe', 4],
   ['toolSelect', 4],
   ['toolPolicy', 4],
+  ['agentLanguagePolicy', 4],
   // `toolActivation` turns the `toolRegistry` (L3) contribution table into
   // per-agent runtime registrations, filtered by the bound Profile's tool
   // policy (`profile`, L4) — the reason it cannot live in L3 itself.
@@ -391,6 +393,8 @@ function domainFromRel(rel, { exemptRootFile }) {
     // `src/{scope}/{domain}/…`
     if (segments[0] === 'agent' && segments[1] === 'task') return 'agentTask';
     if (segments[0] === 'agent' && segments[1] === 'plugin') return 'agentPlugin';
+    if (segments[0] === 'agent' && segments[1] === 'languagePolicy') return 'agentLanguagePolicy';
+    if (segments[0] === 'session' && segments[1] === 'languagePolicy') return 'sessionLanguagePolicy';
     return segments[1];
   }
   // Top-level `src/*.ts` facades are not domains — exempt from layering.

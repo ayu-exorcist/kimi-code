@@ -36,6 +36,7 @@ import { IAgentActivityView } from '#/agent/activityView/activityView';
 import { ISessionExternalHooksService } from '#/session/externalHooks/externalHooks';
 import { ISessionMetadata } from '#/session/sessionMetadata/sessionMetadata';
 import { ISessionSkillCatalog } from '#/session/sessionSkillCatalog/skillCatalog';
+import { ISessionLanguagePolicy } from '#/session/languagePolicy/languagePolicy';
 import { ISessionToolPolicy } from '#/session/sessionToolPolicy/sessionToolPolicy';
 import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
 import { ISessionIndex, type SessionSummary } from '#/app/sessionIndex/sessionIndex';
@@ -297,6 +298,16 @@ function sessionToolPolicyStub(): ISessionToolPolicy {
   };
 }
 
+function sessionLanguagePolicyStub(): ISessionLanguagePolicy {
+  return {
+    _serviceBrand: undefined,
+    ready: Promise.resolve(),
+    onDidChange: () => ({ dispose: () => {} }),
+    replyLanguage: () => undefined,
+    observeUserPrompt: () => Promise.resolve(),
+  };
+}
+
 function agentLifecycleStub(): IAgentLifecycleService {
   return {
     _serviceBrand: undefined,
@@ -464,6 +475,7 @@ describe('SessionLifecycleService', () => {
       stubPair(ISessionMetadata, metadataStub()),
       stubPair(IHostEnvironment, hostEnvironmentStub()),
       stubPair(ISessionSkillCatalog, skillCatalogStub()),
+      stubPair(ISessionLanguagePolicy, sessionLanguagePolicyStub()),
       stubPair(ISessionToolPolicy, sessionToolPolicyStub()),
       stubPair(ISessionAgentProfileCatalog, agentProfileCatalogStub()),
       stubPair(IWorkspaceService, workspaceStub()),
@@ -1256,6 +1268,38 @@ describe('SessionLifecycleService', () => {
       const target = await svc.fork({ sourceSessionId: 'src', newSessionId: 'dst' });
 
       expect(target.accessor.get(ISessionToolPolicy).disabledTools()).toEqual(['Skill']);
+    });
+
+    it('loads the copied session language policy before returning the fork', async () => {
+      const root = await makeTmpRoot();
+      const bootstrap = tmpBootstrapStub(root);
+      const srcDir = join(root, 'sessions', 'wd_stub', 'src');
+      const dstPolicy = join(root, 'sessions', 'wd_stub', 'dst', 'language-policy', 'state.json');
+      let readyCount = 0;
+      let replyLanguage: string | undefined;
+      const policy = {
+        ...sessionLanguagePolicyStub(),
+        get ready(): Promise<void> {
+          readyCount += 1;
+          if (readyCount === 1) return Promise.resolve();
+          return readFile(dstPolicy, 'utf8').then((raw) => {
+            replyLanguage = (JSON.parse(raw) as { replyLanguage: typeof replyLanguage }).replyLanguage;
+          });
+        },
+        replyLanguage: () => replyLanguage,
+      } satisfies ISessionLanguagePolicy;
+      const svc = build([
+        stubPair(IBootstrapService, bootstrap),
+        workspaceGetStub(),
+        stubPair(ISessionLanguagePolicy, policy),
+      ]);
+      await svc.create({ sessionId: 'src', workDir: '/tmp/proj' });
+      await mkdir(join(srcDir, 'language-policy'), { recursive: true });
+      await writeFile(join(srcDir, 'language-policy', 'state.json'), '{"replyLanguage":"Japanese"}');
+
+      const target = await svc.fork({ sourceSessionId: 'src', newSessionId: 'dst' });
+
+      expect(target.accessor.get(ISessionLanguagePolicy).replyLanguage()).toBe('Japanese');
     });
 
     it('rolls back the target session when fork fails after materializing', async () => {

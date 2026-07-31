@@ -18,6 +18,8 @@ Permission mode notes:
 - In auto permission mode, ExitPlanMode exits plan mode without asking the user.
 - Use EnterPlanMode only when planning itself adds value.
 
+Use the session's user-facing language for progress, review, and the agent-managed plan file. That plan is interaction content, not a repository artifact. Only when the user explicitly asks to save or publish a plan as project documentation should it follow the target document's existing language conventions.
+
 When NOT to use:
 - Single-line or few-line fixes (typos, obvious bugs, small tweaks)
 - User gave very specific, detailed instructions

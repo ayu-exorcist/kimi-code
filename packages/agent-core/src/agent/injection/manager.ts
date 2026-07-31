@@ -3,6 +3,7 @@ import { formatTaskList } from '#/tools/background/task-list';
 import type { Agent } from '..';
 import { GoalInjector } from './goal';
 import type { DynamicInjector } from './injector';
+import { LanguagePolicyInjector } from './language-policy';
 import { PermissionModeInjector } from './permission-mode';
 import { PluginSessionStartInjector } from './plugin-session-start';
 import { PlanModeInjector } from './plan-mode';
@@ -30,6 +31,9 @@ export class InjectionManager {
       new TodoListReminderInjector(agent),
       new PlanModeInjector(agent),
       new PermissionModeInjector(agent),
+      ...(agent.replyLanguagePolicy === undefined
+        ? []
+        : [new LanguagePolicyInjector(agent, agent.replyLanguagePolicy)]),
     ];
     this.goalInjector = agent.type === 'main' ? new GoalInjector(agent) : null;
     this.toolsDiffInjector = new ToolsDiffInjector(agent);

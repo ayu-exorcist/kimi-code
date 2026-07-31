@@ -113,6 +113,7 @@ export class AgentRPCService implements IAgentRPCService {
       role: 'user',
       content: [...payload.input],
       toolCalls: [],
+      origin: { kind: 'user' },
     } });
     const [steered] = await this.promptService.steer([queued.id]);
     const turn = await steered?.launched;

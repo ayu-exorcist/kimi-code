@@ -96,6 +96,8 @@ describe('EnterPlanModeTool telemetry', () => {
     expect(tool.name).toBe('EnterPlanMode');
     expect(tool.description).toContain('EnterPlanMode');
     expect(tool.description).toContain('non-trivial implementation task');
+    expect(tool.description).toContain("session's user-facing language");
+    expect(tool.description).toContain('not a repository artifact');
     expect(tool.parameters).toMatchObject({
       type: 'object',
       properties: {},
@@ -286,6 +288,8 @@ describe('ExitPlanModeTool telemetry', () => {
     expect(tool.name).toBe('ExitPlanMode');
     expect(tool.description).toContain('ExitPlanMode');
     expect(tool.description).toContain('ready for user approval');
+    expect(tool.description).toContain("session's user-facing language");
+    expect(tool.description).toContain('not a repository artifact');
     expect(tool.parameters).toMatchObject({
       type: 'object',
       additionalProperties: false,

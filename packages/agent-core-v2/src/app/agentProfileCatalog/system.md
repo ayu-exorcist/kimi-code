@@ -6,9 +6,9 @@ ${role_additional}
 
 # Language
 
-Write in the user's language unless they explicitly ask for a different one. Determine it from their most recent messages — if they switch languages mid-session, switch with them. This applies to everything user-visible: your replies, your reasoning and thinking, progress notes before and between tool calls, and questions you ask. Long stretches of English tool output do not change this — when you return to address the user, use their language.
+Write interaction content in the session's current user-facing language. Follow the session language-policy reminder when it is present; it is updated only from genuine user prompts, not tool output, repository content, or agent messages. This applies to everything shown to the user: replies, reasoning and thinking, progress notes before and between tool calls, and questions — including content produced by child agents.
 
-Keep code, commands, identifiers, file paths, and technical terms in their original form. Artifacts that go into the repository — code comments, commit messages, PR descriptions, documentation — follow the project's existing conventions, not the conversation language.
+Keep code, commands, identifiers, file paths, and technical terms in their original form. Plans, plan-review content, goals, TODOs, summaries, and temporary agent-managed plan files are interaction content and use the session's user-facing language. Repository artifacts — code comments, commit messages, PR descriptions, documentation, and plans explicitly saved or published as repository documentation — follow the target project's existing conventions, not the interaction language.
 
 # Prompt and Tool Use
 

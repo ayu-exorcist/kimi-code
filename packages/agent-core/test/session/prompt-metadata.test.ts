@@ -69,6 +69,58 @@ describe('promptMetadataTextFromPayload', () => {
 });
 
 describe('SessionAPIImpl prompt metadata', () => {
+  it('observes external prompt and steer payloads before dispatch, but not skill or plugin activations', async () => {
+    const sessionDir = await makeTempDir();
+    const events: Array<Record<string, unknown>> = [];
+    const session = track(
+      new Session({
+        id: 'reply-language-rpc-boundary',
+        kaos: testKaos.withCwd(sessionDir),
+        homedir: sessionDir,
+        rpc: createSessionRpc(events),
+        skills: { explicitDirs: [join(sessionDir, 'missing-skills')] },
+      }),
+    );
+    const prompt = vi.fn(() => {
+      expect(session.replyLanguagePolicy.replyLanguage()).toBe('English');
+    });
+    const steer = vi.fn(() => {
+      expect(session.replyLanguagePolicy.replyLanguage()).toBe('Korean');
+    });
+    vi.spyOn(session, 'ensureAgentResumed').mockResolvedValue({
+      rpcMethods: {
+        prompt,
+        steer,
+        activateSkill: vi.fn(),
+        activatePluginCommand: vi.fn(),
+      },
+    } as any);
+
+    const api = new SessionAPIImpl(session);
+    await api.prompt({
+      agentId: 'main',
+      input: [{ type: 'text', text: 'Please implement this change and add focused tests for the prompt service.' }],
+    });
+    await api.steer({
+      agentId: 'main',
+      input: [{ type: 'text', text: '이 변경을 구현하고 테스트를 추가해 주세요.' }],
+    });
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(steer).toHaveBeenCalledOnce();
+
+    // These calls create internal prompt content, but are not authentic external
+    // user prompt/steer payloads and therefore cannot change the policy.
+    session.replyLanguagePolicy.restore('Japanese');
+    await api.activateSkill({ agentId: 'main', name: 'example', args: 'Please write this in English.' });
+    await api.activatePluginCommand({
+      agentId: 'main',
+      pluginId: 'plugin',
+      commandName: 'example',
+      args: 'Please write this in English.',
+    });
+    expect(session.replyLanguagePolicy.replyLanguage()).toBe('Japanese');
+  });
+
   it('derives title and lastPrompt from a steer the same way as a prompt', async () => {
     const sessionDir = await makeTempDir();
     const events: Array<Record<string, unknown>> = [];

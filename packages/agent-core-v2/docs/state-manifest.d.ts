@@ -23,7 +23,7 @@
 // references become '(circular)', and class instances collapse to a '(ClassName)'
 // marker — the wire shape of an entry is the JSON projection of the type here.
 //
-// Index (Session: 28 keys · Agent: 69 keys)
+// Index (Session: 29 keys · Agent: 70 keys)
 //   Session
 //     cron.inFlight                             src/session/cron/sessionCronServiceImpl.ts
 //     cron.lastSeenAt                           src/session/cron/sessionCronServiceImpl.ts
@@ -45,6 +45,7 @@
 //     sessionFsWatch.rawCount                   src/session/sessionFs/fsWatchService.ts
 //     sessionFsWatch.truncated                  src/session/sessionFs/fsWatchService.ts
 //     sessionFsWatch.watched                    src/session/sessionFs/fsWatchService.ts
+//     sessionLanguagePolicy.state               src/session/languagePolicy/languagePolicyService.ts
 //     sessionLog.rootLevel                      src/session/sessionLog/sessionLogService.ts
 //     sessionMetadata.data                      src/session/sessionMetadata/sessionMetadataService.ts
 //     sessionSkillCatalog.contributions         src/session/sessionSkillCatalog/skillCatalogService.ts
@@ -82,6 +83,7 @@
 //     goal.liveWallClockStartedAt                     src/agent/goal/goalService.ts
 //     goal.pendingContinuationGoals                   src/agent/goal/goalService.ts
 //     goal.resumeContinuation                         src/agent/goal/goalService.ts
+//     languagePolicy.lastInjectedLanguage             src/agent/languagePolicy/languagePolicyInjectionService.ts
 //     llmRequester.emittedThinkingEffortWarnings      src/agent/llmRequester/llmRequesterService.ts
 //     llmRequester.lastConfigLogSignature             src/agent/llmRequester/llmRequesterService.ts
 //     llmRequester.mediaDegradedTurns                 src/agent/llmRequester/llmRequesterService.ts
@@ -166,6 +168,10 @@ export interface SessionStateSnapshot {
     readonly resolve: (response: unknown) => void;
   }>;
   'interaction.recentlyResolved': Map<string, number>;
+  // src/session/languagePolicy/languagePolicyService.ts
+  'sessionLanguagePolicy.state': /* SessionLanguagePolicyState — packages/agent-core-v2/src/session/languagePolicy/languagePolicyService.ts */ {
+    readonly replyLanguage: string | undefined;
+  };
   // src/session/sessionActivity/sessionActivityService.ts
   'sessionActivity.current': /* SessionActivityState — packages/agent-core-v2/src/session/sessionActivity/sessionActivity.ts */ {
     readonly busy: boolean;
@@ -1008,12 +1014,14 @@ export interface AgentStateSnapshot {
     readonly turnId: number;
     readonly goalId: string;
   } | undefined;
+  // src/agent/languagePolicy/languagePolicyInjectionService.ts
+  'languagePolicy.lastInjectedLanguage': string | undefined;
   // src/agent/llmRequester/llmRequesterService.ts
   'llmRequester.emittedThinkingEffortWarnings': Set<string>;
   'llmRequester.lastConfigLogSignature': string | undefined;
   'llmRequester.mediaDegradedTurns': Set<number>;
   'llmRequester.mediaStrippedTurns': Map<number, /* MediaStripSnapshot — packages/agent-core-v2/src/agent/contextProjector/contextProjector.ts */ {
-    readonly "__@mediaStripSnapshotBrand@2681": undefined;
+    readonly "__@mediaStripSnapshotBrand@2723": undefined;
   }>;
   'llmRequester.turnConfigs': Map<number, /* TurnRequestConfig — packages/agent-core-v2/src/agent/llmRequester/llmRequesterService.ts */ {
     readonly resolved: /* ProfileModelContext — packages/agent-core-v2/src/agent/profile/profile.ts */ {

@@ -8,6 +8,8 @@ Use this tool when you are in plan mode and have finished writing your plan to t
 ## When to Use
 Only use this tool for tasks that require planning implementation steps. For research tasks (searching files, reading code, understanding the codebase), do NOT use this tool.
 
+Use the session's user-facing language for the plan and its review. The agent-managed plan file is interaction content, not a repository artifact. Only a plan the user explicitly asks to save or publish as project documentation follows the target document's existing language conventions.
+
 ## What a good plan contains
 List specific, verifiable steps grounded in the actual codebase — real files, functions, and commands, in a sensible order. Each step should be concrete enough to act on and to check. Avoid vague filler like "improve performance" or "add tests"; say what to change and where.
 
