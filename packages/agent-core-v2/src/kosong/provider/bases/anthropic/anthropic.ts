@@ -1,10 +1,10 @@
 /**
- * `kosong/provider` domain (L2) — Anthropic Messages wire base.
+ * `kosong/provider` domain — Anthropic Messages wire base.
  *
  * Speaks the Anthropic Messages wire format: system blocks with ephemeral
  * cache control, tool-result user blocks, consecutive-user merging, beta
  * headers vs the beta endpoint, and the thinking profile matrix (budget vs
- * adaptive) from `anthropic-profile`.
+ * adaptive).
  *
  * The hook surface is `withThinking` plus `convertError`. `withThinking`
  * lets a vendor dialect running over this transport re-encode the thinking
@@ -518,9 +518,6 @@ export function convertAnthropicError(
   error: unknown,
   convertErrorHook?: (error: unknown) => ChatProviderError | undefined,
 ): ChatProviderError {
-  // Abort guard FIRST: throws (never returns) the standard abort DOMException
-  // for any abort shape, so a user cancellation is never misclassified as a
-  // retryable provider failure.
   throwIfAbortError(error);
   if (error instanceof ChatProviderError) {
     return error;
@@ -895,14 +892,11 @@ export class AnthropicChatProvider implements ChatProvider {
 
     injectCacheControlOnLastBlock(messages);
 
-    // Per-turn intent overlays in the fixed contract order:
-    // cacheKey → sampling → thinking → maxCompletionTokens.
     let kwargs: AnthropicGenerationKwargs = { ...this._generationKwargs };
     let useBetaApi = this._betaApi;
 
     let metadata = this._metadata;
     if (options?.cacheKey !== undefined) {
-      // The cache key is encoded as `metadata.user_id` on this transport.
       metadata = { ...metadata, user_id: options.cacheKey };
     }
 
@@ -927,8 +921,6 @@ export class AnthropicChatProvider implements ChatProvider {
       } else {
         kwargs = { ...kwargs, ...this._encodeThinking(thinking.effort, kwargs) };
       }
-      // The keep context-management edit is overlaid by the base on top of
-      // whatever thinking encoding happened — a trait never handles keep.
       if (thinking.keep !== undefined) {
         kwargs = { ...kwargs, ...applyThinkingKeep(kwargs, thinking.keep) };
         useBetaApi = true;
@@ -937,7 +929,6 @@ export class AnthropicChatProvider implements ChatProvider {
 
     if (options?.maxCompletionTokens !== undefined) {
       let cap = options.maxCompletionTokens;
-      // Window clamp first — it cannot be skipped.
       if (
         options.usedContextTokens !== undefined &&
         options.maxContextTokens !== undefined &&
@@ -1065,11 +1056,6 @@ export class AnthropicChatProvider implements ChatProvider {
     }
   }
 
-  /**
-   * The base thinking path: encode the per-turn effort against the model's
-   * thinking profile (budget vs adaptive). Runs only when no withThinking
-   * hook took over. Reads the seeded beta list from the current kwargs.
-   */
   private _encodeThinking(
     effort: ThinkingEffort,
     kwargs: AnthropicGenerationKwargs,
@@ -1173,11 +1159,6 @@ export class AnthropicChatProvider implements ChatProvider {
   }
 }
 
-/**
- * The keep context-management edit, overlaid by the base on top of any
- * thinking encoding: appends the context-management beta and replaces any
- * prior clear-thinking edit with one carrying this keep value.
- */
 function applyThinkingKeep(
   kwargs: AnthropicGenerationKwargs,
   keep: string,
@@ -1197,10 +1178,6 @@ function applyThinkingKeep(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Base capability catalog — the final fallback of capability resolution.
-// `undefined` means the base knows nothing about the model.
-// ---------------------------------------------------------------------------
 
 const CLAUDE_VISION_TOOL_PREFIXES = ['claude-3-', 'claude-3.5-', 'claude-3.7-'] as const;
 
