@@ -13,6 +13,7 @@ import { IAgentProfileService, type ProfileData } from '#/agent/profile/profile'
 import { IAgentLoopService } from '#/agent/loop/loop';
 import { IAgentUserToolService } from '#/agent/userTool/userTool';
 import { IEventBus, type DomainEvent } from '#/app/event/eventBus';
+import { normalizeAgentProfile } from '#/app/agentProfileCatalog/agentProfileCatalog';
 import { ISessionAgentProfileCatalog } from '#/session/sessionAgentProfileCatalog/sessionAgentProfileCatalog';
 import { APIProviderRateLimitError } from '#/kosong/contract/errors';
 import { IModelCatalog, type Model } from '#/kosong/model/catalog';
@@ -606,6 +607,35 @@ describe('AgentRunBatch scheduling contract', () => {
     }
   });
 
+  it('a non-positive task timeout means unbounded (v1 parity)', async () => {
+    vi.useFakeTimers();
+    try {
+      const { runBatch, attempts } = createMockAgentRunBatchRunner();
+      const running = runBatch([{ ...queuedAgentRunTask(1), timeout: 0 }], {
+        signal: new AbortController().signal,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      attempts[0]!.markReady();
+      // Print mode fills the subagent timeout with 0 = unbounded; it must not
+      // arm an immediate abort.
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      attempts[0]!.outcome.resolve({
+        task: attempts[0]!.task,
+        agentId: 'agent-1',
+        status: 'completed',
+        result: 'done',
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(running).resolves.toMatchObject([
+        { task: { data: 1 }, agentId: 'agent-1', status: 'completed' },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('does not spend task timeout while the task is queued', async () => {
     vi.useFakeTimers();
     try {
@@ -866,9 +896,9 @@ describe('SessionSwarmService metadata compatibility', () => {
       ready: Promise.resolve(),
       get: (name: string) =>
         name === 'coder'
-          ? { name: 'coder', tools: [], systemPrompt: () => '' }
+          ? normalizeAgentProfile({ name: 'coder', tools: [], systemPrompt: () => '' })
           : undefined,
-      getDefault: () => ({ name: 'agent', tools: [], systemPrompt: () => '' }),
+      getDefault: () => normalizeAgentProfile({ name: 'agent', tools: [], systemPrompt: () => '' }),
       list: () => [],
     });
     ix.stub(

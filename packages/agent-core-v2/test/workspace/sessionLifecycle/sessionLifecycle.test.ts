@@ -288,9 +288,11 @@ function persistentWorkspaceStub(): IWorkspaceService {
 function sessionIndexStub(): ISessionIndex {
   return {
     _serviceBrand: undefined,
-    list: () => Promise.resolve({ items: [], total: 0, hasMore: false }),
+    prepare: () => Promise.resolve({ state: 'uninitialized', degradedCount: 0 }),
+    status: () => ({ state: 'uninitialized', degradedCount: 0 }),
+    listRecent: () => Promise.resolve({ items: [] }),
     get: () => Promise.resolve(undefined),
-    countActive: () => Promise.resolve(0),
+    count: () => Promise.resolve(0),
     remove: () => Promise.resolve(),
   };
 }
@@ -310,9 +312,11 @@ function sessionIndexWithSummary(
   };
   return {
     _serviceBrand: undefined,
-    list: () => Promise.resolve({ items: [summary], total: 1, hasMore: false }),
+    prepare: () => Promise.resolve({ state: 'uninitialized', degradedCount: 0 }),
+    status: () => ({ state: 'uninitialized', degradedCount: 0 }),
+    listRecent: () => Promise.resolve({ items: [summary] }),
     get: (id) => Promise.resolve(id === sessionId ? summary : undefined),
-    countActive: () => Promise.resolve(1),
+    count: () => Promise.resolve(1),
     remove: () => Promise.resolve(),
   };
 }
@@ -1162,7 +1166,7 @@ describe('SessionLifecycleService', () => {
     expect(recordedSessionHookEvents).toEqual(['create:startup:s1', 'close:exit:s1']);
   });
 
-  it('waits for MCP initialization before create returns', async () => {
+  it('returns from create without waiting for MCP initialization', async () => {
     let resolveMcpReady: (() => void) | undefined;
     const mcpReady = new Promise<void>((resolve) => {
       resolveMcpReady = resolve;
@@ -1171,17 +1175,13 @@ describe('SessionLifecycleService', () => {
       stubPair(IWorkspaceMcpService, workspaceMcpServiceStub(mcpReady)),
     ]);
 
-    let settled = false;
-    const create = svc.create({ sessionId: 's1', workDir: '/tmp/proj' }).then(() => {
-      settled = true;
-    });
-
-    await tick();
-    expect(settled).toBe(false);
+    // Create resolves while the workspace MCP initial connect is still
+    // pending; the seeded handle carries the readiness promise so the agent's
+    // LLM steps can wait on it instead.
+    const handle = await svc.create({ sessionId: 's1', workDir: '/tmp/proj' });
+    expect(handle.accessor.get(ISessionMcpHandle).ready).toBe(mcpReady);
 
     resolveMcpReady?.();
-    await create;
-    expect(settled).toBe(true);
   });
 
   function overlayStub(ready: Promise<void> = Promise.resolve()) {
@@ -1231,7 +1231,7 @@ describe('SessionLifecycleService', () => {
     expect(handle?.accessor.get(ISessionMcpHandle)).toBe(overlayHandle);
   });
 
-  it('waits for the session MCP overlay readiness before create returns', async () => {
+  it('returns from create without waiting for the session MCP overlay readiness', async () => {
     let resolveOverlayReady: (() => void) | undefined;
     const overlayReady = new Promise<void>((resolve) => {
       resolveOverlayReady = resolve;
@@ -1241,23 +1241,17 @@ describe('SessionLifecycleService', () => {
       stubPair(IWorkspaceMcpService, { ...workspaceMcpServiceStub(), sessionOverlay }),
     ]);
 
-    let settled = false;
-    const create = svc
-      .create({
-        sessionId: 's1',
-        workDir: '/tmp/proj',
-        mcpServers: { eph: { transport: 'stdio', command: 'node' } },
-      })
-      .then(() => {
-        settled = true;
-      });
-
-    await tick();
-    expect(settled).toBe(false);
+    // Create resolves while the overlay's initial connect is still pending;
+    // the seeded handle carries the readiness promise so the agent's LLM
+    // steps can wait on it instead.
+    const handle = await svc.create({
+      sessionId: 's1',
+      workDir: '/tmp/proj',
+      mcpServers: { eph: { transport: 'stdio', command: 'node' } },
+    });
+    expect(handle.accessor.get(ISessionMcpHandle).ready).toBe(overlayReady);
 
     resolveOverlayReady?.();
-    await create;
-    expect(settled).toBe(true);
   });
 
   it('shuts the session MCP overlay down when create fails after materialization', async () => {
@@ -1335,14 +1329,26 @@ describe('SessionLifecycleService', () => {
   });
 
   it('hides a session from get/list until its resume finishes', async () => {
-    let resolveMcpReady: (() => void) | undefined;
-    const mcpReady = new Promise<void>((resolve) => {
-      resolveMcpReady = resolve;
+    let releaseMainAgent: ((handle: IAgentScopeHandle) => void) | undefined;
+    const mainAgent = new Promise<IAgentScopeHandle>((resolve) => {
+      releaseMainAgent = resolve;
     });
+    const main = {
+      id: MAIN_AGENT_ID,
+      kind: LifecycleScope.Agent,
+      accessor: {
+        get: () => {
+          throw new Error('unexpected main agent service access');
+        },
+      },
+      dispose: () => {},
+    } as IAgentScopeHandle;
     const svc = await build([
       stubPair(ISessionIndex, sessionIndexWithSummary('s1', '/tmp/proj', 'wd_stub')),
-      stubPair(IAgentLifecycleService, agentLifecycleWithMainStub()),
-      stubPair(IWorkspaceMcpService, workspaceMcpServiceStub(mcpReady)),
+      stubPair(IAgentLifecycleService, {
+        ...agentLifecycleStub(),
+        create: () => mainAgent,
+      }),
     ]);
 
     const resumed = svc.resume('s1');
@@ -1351,7 +1357,7 @@ describe('SessionLifecycleService', () => {
     expect(svc.get('s1')).toBeUndefined();
     expect(svc.list()).toEqual([]);
 
-    resolveMcpReady?.();
+    releaseMainAgent?.(main);
     const handle = await resumed;
 
     expect(handle?.id).toBe('s1');
