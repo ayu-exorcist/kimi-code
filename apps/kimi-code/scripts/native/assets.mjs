@@ -12,6 +12,7 @@ import {
   buildRuntimeAssetKey,
 } from './manifest.mjs';
 import { resolveTargetDeps, SUPPORTED_TARGETS } from './native-deps.mjs';
+import { nativeIntermediatesDir } from './paths.mjs';
 
 export { NATIVE_ASSET_MANIFEST_VERSION };
 
@@ -272,7 +273,7 @@ export async function collectNativeAssets({ appRoot, target }) {
     Object.assign(assets, result.assets);
   }
 
-  const workerSource = resolve(appRoot, 'dist-native', 'intermediates', 'text-build-worker.mjs');
+  const workerSource = resolve(nativeIntermediatesDir(), 'text-build-worker.mjs');
   const workerBytes = await readFile(workerSource);
   const workerAssetKey = buildRuntimeAssetKey(target, MINIDB_TEXT_BUILD_WORKER_ASSET.key);
   const runtimeFiles = [

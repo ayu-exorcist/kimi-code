@@ -11,12 +11,14 @@ import { resolve } from 'node:path';
 
 import { defineConfig } from 'tsdown';
 
+import { nativeIntermediatesDir } from './scripts/native/paths.mjs';
+
 const here = import.meta.dirname;
 
 export default defineConfig({
   entry: [resolve(here, '../../packages/minidb/src/worker/text-build-worker.ts')],
   format: ['esm'],
-  outDir: resolve(here, 'dist-native/intermediates'),
+  outDir: nativeIntermediatesDir(),
   entryFileNames: 'text-build-worker.mjs',
   codeSplitting: false,
   platform: 'node',
