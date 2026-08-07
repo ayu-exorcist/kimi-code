@@ -9,8 +9,9 @@
 import { franc } from 'franc-min';
 
 import { Disposable } from '#/_base/di/lifecycle';
-import { LifecycleScope, ScopeActivation, registerScopedService } from '#/_base/di/scope';
+import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import { AsyncEmitter, type Event } from '#/_base/event';
+import { LifecycleScope } from '#/app/scopes';
 import { defineState } from '#/_base/state/stateRegistry';
 import type { ContentPart } from '#/kosong/contract/message';
 import { IAtomicDocumentStore } from '#/persistence/interface/atomicDocumentStore';
