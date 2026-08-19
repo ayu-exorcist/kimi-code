@@ -1,15 +1,6 @@
-/**
- * `languagePolicy` domain (L4) — Agent-scoped user-facing language reminder.
- *
- * Reads the session's shared reply-language policy, registers a reminder through
- * `contextInjector`, and retains the last injected value in `agentState` so
- * active main and child Agent contexts refresh only when the policy changes or
- * compaction removes their reminder. Bound at Agent scope.
- */
-
 import { Disposable } from '#/_base/di/lifecycle';
 import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
-import { defineState } from '#/_base/state/stateRegistry';
+import { defineState } from '#/state/state';
 import { LifecycleScope } from '#/app/scopes';
 import { IAgentContextInjectorService } from '#/agent/contextInjector/contextInjector';
 import { IAgentStateService } from '#/agent/state/agentState';
@@ -40,7 +31,7 @@ export class AgentLanguagePolicyInjectionService
     @IAgentStateService private readonly states: IAgentStateService,
   ) {
     super();
-    this.states.register(languagePolicyLastInjectedLanguageKey);
+    this._register(this.states.contributeState(languagePolicyLastInjectedLanguageKey));
     this._register(
       this.policy.onDidChange(() => {
         this.policyChanged = this.policy.replyLanguage() !== this.lastInjectedLanguage;

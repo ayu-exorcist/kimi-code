@@ -1,18 +1,10 @@
-/**
- * `languagePolicy` domain (L3) — persisted session reply-language policy.
- *
- * Stores one conservative, high-confidence reply language for user-visible
- * interaction. State is plain data registered in `sessionState`, persisted as
- * one atomic document, and shared by all Agents in the Session.
- */
-
 import { franc } from 'franc-min';
 
 import { Disposable } from '#/_base/di/lifecycle';
 import { ScopeActivation, registerScopedService } from '#/_base/di/scope';
 import { AsyncEmitter, type Event } from '#/_base/event';
 import { LifecycleScope } from '#/app/scopes';
-import { defineState } from '#/_base/state/stateRegistry';
+import { defineState } from '#/state/state';
 import type { ContentPart } from '#/kosong/contract/message';
 import { IAtomicDocumentStore } from '#/persistence/interface/atomicDocumentStore';
 import { ISessionContext } from '#/session/sessionContext/sessionContext';
@@ -61,7 +53,7 @@ export class SessionLanguagePolicyService extends Disposable implements ISession
     @IAtomicDocumentStore private readonly store: IAtomicDocumentStore,
   ) {
     super();
-    this.states.register(sessionLanguagePolicyStateKey);
+    this._register(this.states.contributeState(sessionLanguagePolicyStateKey));
     this.scope = sessionContext.scope('language-policy');
     this.onDidChange = this.changeEmitter.event;
     this.ready = this.load();

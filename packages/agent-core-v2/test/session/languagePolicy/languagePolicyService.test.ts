@@ -1,7 +1,3 @@
-/**
- * Scenario: persistent, conservative session reply-language policy.
- */
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ContentPart } from '#/kosong/contract/message';

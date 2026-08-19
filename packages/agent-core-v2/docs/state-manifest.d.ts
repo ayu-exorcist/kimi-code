@@ -27,7 +27,7 @@
 // references become '(circular)', and class instances collapse to a '(ClassName)'
 // marker — the wire shape of an entry is the JSON projection of the type here.
 //
-// Index (App: 0 keys · Workspace: 6 keys · Session: 18 keys · Agent: 98 keys)
+// Index (App: 0 keys · Workspace: 6 keys · Session: 19 keys · Agent: 99 keys)
 //   App
 //   Workspace
 //     workspaceDirs.ephemeralDirs          src/workspace/workspaceDirs/workspaceDirsService.ts
@@ -48,6 +48,7 @@
 //     interaction.recentlyResolved       src/session/interaction/interactionService.ts
 //     sessionActivity.current            src/session/sessionActivity/sessionActivityService.ts
 //     sessionActivity.folds              src/session/sessionActivity/sessionActivityService.ts
+//     sessionLanguagePolicy.state        src/session/languagePolicy/languagePolicyService.ts
 //     sessionLog.rootLevel               src/session/sessionLog/sessionLogService.ts
 //     sessionMetadata.data               src/session/sessionMetadata/sessionMetadataService.ts
 //     sessionSkillCatalog.contributions  src/session/sessionSkillCatalog/skillCatalogService.ts
@@ -92,6 +93,7 @@
 //     goalForkNotice                                  src/agent/goal/goalService.ts
 //     interaction                                     src/session/interaction/interactionOps.ts
 //     interruptionReminder                            src/agent/interruptionReminder/interruptionReminderOps.ts
+//     languagePolicy.lastInjectedLanguage             src/agent/languagePolicy/languagePolicyInjectionService.ts
 //     llm.requestTrace                                src/agent/llmRequester/llmRequestOps.ts
 //     llmRequester.emittedThinkingEffortWarnings      src/agent/llmRequester/llmRequesterService.ts
 //     llmRequester.lastConfigLogSignature             src/agent/llmRequester/llmRequesterService.ts
@@ -468,6 +470,10 @@ export interface SessionStateSnapshot {
     readonly resolve: (response: unknown) => void;
   }>;
   'interaction.recentlyResolved': Map<string, number>;
+  // src/session/languagePolicy/languagePolicyService.ts
+  'sessionLanguagePolicy.state': /* SessionLanguagePolicyState — packages/agent-core-v2/src/session/languagePolicy/languagePolicyService.ts */ {
+    readonly replyLanguage: string | undefined;
+  };
   // src/session/sessionActivity/sessionActivityService.ts
   'sessionActivity.current': /* SessionActivityState — packages/agent-core-v2/src/session/sessionActivity/sessionActivity.ts */ {
     readonly busy: boolean;
@@ -1243,6 +1249,8 @@ export interface AgentStateSnapshot {
   // src/agent/interruptionReminder/interruptionReminderOps.ts
   // replayable · durable — folds: InterruptionReminderRecorded
   'interruptionReminder': null;
+  // src/agent/languagePolicy/languagePolicyInjectionService.ts
+  'languagePolicy.lastInjectedLanguage': string | undefined;
   // src/agent/llmRequester/llmRequestOps.ts
   // replayable · durable — folds: LlmToolsSnapshot, LlmRequest
   'llm.requestTrace': /* LlmRequestTraceState — packages/agent-core-v2/src/agent/llmRequester/llmRequestOps.ts */ {
