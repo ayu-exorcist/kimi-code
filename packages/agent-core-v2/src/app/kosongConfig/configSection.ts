@@ -1,25 +1,3 @@
-/**
- * `kosongConfig` domain — config-section declarations for kosong.
- *
- * The persistence wrapper for kosong's provider/model registries and the
- * thinking / model-catalog preferences: declares every
- * kosong-owned section constant and its zod schema, plus the env bindings /
- * write-path strips and the snake_case ↔ camelCase TOML transforms. Where
- * kosong owns a pure type (`providers` / `models` / `thinking`), the schema
- * is re-derived from it and pinned by an `AssertExact` assertion (schema ≡
- * type at compile time); `modelCatalog` has no
- * kosong-side type — its derives from the local schema. Self-registered
- * at module load via `registerConfigSection`.
- *
- * `ProviderTypeSchema` is deliberately free-form text: vendor identity is
- * NOT enumerated at parse time. Validation happens at resolve time against
- * kosong's provider-definition registry, which is what allows external
- * packages to register new vendors without touching this schema.
- *
- * Side-effect module: production imports it for the registration side
- * effects; tests import it on demand.
- */
-
 import { z } from 'zod';
 
 import {
@@ -42,7 +20,6 @@ import type { ThinkingConfig } from '#/kosong/model/thinking';
 import type { CustomBody, JSONValue } from '#/kosong/contract/customBody';
 import type { OAuthRef, ProviderConfig, ProvidersSection } from '#/kosong/provider/provider';
 import { ProtocolSchema } from '#/kosong/protocol/protocol';
-
 
 export const PROVIDERS_SECTION = 'providers';
 
@@ -203,7 +180,6 @@ registerConfigSection(PROVIDERS_SECTION, ProvidersSectionSchema, {
   toToml: providersToToml,
 });
 
-
 export const MODELS_SECTION = 'models';
 
 export const DEFAULT_MODEL_SECTION = 'defaultModel';
@@ -323,7 +299,6 @@ registerConfigSection(MODELS_SECTION, ModelsSectionSchema, {
   fromToml: modelsFromToml,
   toToml: modelsToToml,
 });
-
 
 export const THINKING_SECTION = 'thinking';
 

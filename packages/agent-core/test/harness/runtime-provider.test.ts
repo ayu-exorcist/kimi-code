@@ -1133,7 +1133,7 @@ describe('google base URL forwarding', () => {
           gemini: {
             type: 'google-genai',
             apiKey: 'g-key',
-            baseUrl: 'https://qianxun.example/v1beta',
+            baseUrl: 'https://genai-gateway.example/v1beta',
           },
         },
         models: {
@@ -1145,7 +1145,7 @@ describe('google base URL forwarding', () => {
     expect(resolved.provider).toMatchObject({
       type: 'google-genai',
       model: 'gemini-2.5-pro',
-      baseUrl: 'https://qianxun.example/v1beta',
+      baseUrl: 'https://genai-gateway.example/v1beta',
     });
   });
 
@@ -1180,7 +1180,7 @@ describe('google base URL forwarding', () => {
           vertex: {
             type: 'vertexai',
             apiKey: 'v-key',
-            baseUrl: 'https://qianxun.example/vertex',
+            baseUrl: 'https://genai-gateway.example/vertex',
           },
         },
         models: {
@@ -1192,7 +1192,7 @@ describe('google base URL forwarding', () => {
     expect(resolved.provider).toMatchObject({
       type: 'vertexai',
       model: 'gemini-1.5-pro',
-      baseUrl: 'https://qianxun.example/vertex',
+      baseUrl: 'https://genai-gateway.example/vertex',
     });
   });
 
